@@ -212,7 +212,7 @@ Subnets sugeridas:
 
 As subnets públicas recebem recursos que precisam interagir com a internet, como Application Load Balancer e NAT Gateway. O tráfego público de entrada passa por CloudFront, AWS WAF, AWS Shield Standard e ALB. As subnets privadas de aplicação recebem a EC2 do MVP ou os serviços ECS/Fargate na arquitetura final. As subnets privadas de banco recebem o Amazon RDS, que não possui rota pública e não deve receber IP público.
 
-O NAT Gateway é usado para saída técnica, como atualização de sistema, download de imagens, integração com APIs AWS e envio de logs, não para tráfego de entrada. Usuários externos não acessam diretamente EC2, ECS, containers ou RDS.
+O NAT Gateway é usado para saída técnica, como atualização de sistema, download de imagens, integração com APIs AWS e envio de logs, não para tráfego de entrada. Usuários externos não acessam diretamente a EC2 do MVP, os serviços ECS/Fargate da arquitetura final, os containers ou o RDS.
 
 ## 12. Security Groups do MVP
 
