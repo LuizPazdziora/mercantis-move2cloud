@@ -168,9 +168,9 @@ Na arquitetura final, as duas Zonas de Disponibilidade participam ativamente da 
 
 ![Diagrama MVP](images/diagrama-mvp.png)
 
-A arquitetura do MVP representa uma entrega reduzida, temporária e adequada para validação técnica. Ela contém CloudFront, AWS WAF, AWS Shield Standard, AWS Certificate Manager, Application Load Balancer, VPC, duas Zonas de Disponibilidade, subnets públicas, subnet privada de aplicação, EC2 privada executando Docker, `frontend-container`, `backend-api-container`, Amazon RDS for MariaDB em subnet privada, AWS Secrets Manager ou SSM Parameter Store, Amazon CloudWatch e Amazon S3 opcional para assets, backups, evidências e artefatos.
+A arquitetura do MVP representa uma entrega reduzida, temporária e adequada para validação técnica. Ela contém CloudFront, AWS WAF, AWS Shield Standard, AWS Certificate Manager, Application Load Balancer, VPC, duas Zonas de Disponibilidade, subnets públicas, subnet privada de aplicação, EC2 privada executando Docker, `frontend-container`, `backend-api-container`, Amazon RDS for MariaDB em subnet privada, AWS Secrets Manager como padrão recomendado para credenciais do Amazon RDS, Amazon CloudWatch e Amazon S3 opcional para assets, backups, evidências e artefatos. O SSM Parameter Store pode ser usado para parâmetros não sensíveis ou configurações de menor criticidade.
 
-No MVP, a aplicação roda em Docker Compose dentro de uma EC2 privada. Frontend e backend são containers separados. O banco não possui acesso público e fica em subnet privada. Os usuários não acessam diretamente a EC2, ECS ou RDS; o acesso público é conduzido pela camada de borda e pelo ALB. O acesso ao banco ocorre somente pelo backend na porta 3306.
+No MVP, a aplicação roda em Docker Compose dentro de uma EC2 privada. Frontend e backend são containers separados. O banco não possui acesso público e fica em subnet privada. Os usuários não acessam diretamente a EC2, os containers ou o RDS; o acesso público é conduzido pela camada de borda e pelo ALB. O acesso ao banco ocorre somente pelo backend na porta 3306.
 
 A segunda Zona de Disponibilidade aparece preparada para expansão futura e alta disponibilidade, com subnets públicas, privadas de aplicação e privadas de banco já planejadas. Entretanto, o MVP não deve ser descrito como ambiente de alta disponibilidade total. Ele é uma etapa intermediária para demonstração e validação da arquitetura, com possibilidade de evolução para o desenho final.
 
@@ -188,7 +188,7 @@ O ambiente MVP é temporário e não deve permanecer online após testes e demon
 | Escalabilidade | Limitada à capacidade da EC2. | Auto Scaling dos serviços ECS/Fargate. | Permite responder a picos de tráfego com menor intervenção manual. |
 | CDN | CloudFront na borda. | CloudFront integrado ao desenho final. | Mantém cache e redução de latência. |
 | Segurança de borda | AWS WAF, AWS Shield Standard e ACM. | Mesmos controles, com operação permanente e regras amadurecidas. | Proteção consistente contra ataques web e DDoS básico. |
-| Segredos | Secrets Manager ou SSM Parameter Store. | AWS Secrets Manager integrado aos serviços ECS. | Padroniza rotação e consumo seguro de credenciais. |
+| Segredos | O padrão recomendado é AWS Secrets Manager para credenciais do Amazon RDS. O SSM Parameter Store pode ser usado para parâmetros não sensíveis ou configurações de menor criticidade. | AWS Secrets Manager integrado aos serviços ECS. | Padroniza rotação e consumo seguro de credenciais. |
 | Observabilidade | Amazon CloudWatch para logs e métricas essenciais. | CloudWatch, CloudTrail e VPC Flow Logs. | Amplia diagnóstico, auditoria e visibilidade de rede. |
 | Auditoria | Inicial e limitada. | AWS CloudTrail como controle formal. | Permite rastrear chamadas de API e mudanças de configuração. |
 | Deploy | Atualização manual ou semiautomatizada na EC2. | Imagens no ECR e deploy em ECS/Fargate. | Melhora rastreabilidade, versionamento e rollback. |
@@ -220,13 +220,13 @@ Os Security Groups do MVP devem restringir comunicação entre camadas e impedir
 
 | Security Group | Recurso associado | Direção | Protocolo | Porta | Origem/Destino | Justificativa |
 |---|---|---|---|---:|---|---|
-| `sg-alb` | Application Load Balancer | Entrada | TCP | 443 | CloudFront/Internet | Permite tráfego HTTPS público controlado pela borda. |
-| `sg-alb` | Application Load Balancer | Entrada | TCP | 80 | CloudFront/Internet | Permitido apenas para redirecionamento HTTP para HTTPS. |
+| `sg-alb` | Application Load Balancer | Entrada | TCP | 443 | CloudFront | Permite tráfego HTTPS público controlado pela borda. |
+| `sg-alb` | Application Load Balancer | Entrada | TCP | 80 | CloudFront | Permitido apenas para redirecionamento HTTP para HTTPS. |
 | `sg-alb` | Application Load Balancer | Saída | TCP | 80/8080 | `sg-ec2-app` | Encaminha requisições para a aplicação em container na EC2 privada. |
 | `sg-ec2-app` | EC2 privada com Docker Compose | Entrada | TCP | 80/8080 | `sg-alb` | Garante que apenas o ALB acesse frontend/API expostos na instância. |
 | `sg-ec2-app` | EC2 privada com Docker Compose | Entrada | TCP | 22 | Bloqueado | Impede SSH público e reduz superfície de ataque administrativa. |
 | `sg-ec2-app` | EC2 privada com Docker Compose | Saída | TCP | 3306 | `sg-rds` | Permite que somente o backend acesse o MariaDB. |
-| `sg-ec2-app` | EC2 privada com Docker Compose | Saída | TCP | 443 | Internet via NAT Gateway / APIs AWS | Permite atualizações, Docker pull, CloudWatch, Secrets Manager ou SSM Parameter Store. |
+| `sg-ec2-app` | EC2 privada com Docker Compose | Saída | TCP | 443 | Internet via NAT Gateway / APIs AWS | Permite atualizações, Docker pull, CloudWatch e acesso ao AWS Secrets Manager para credenciais do Amazon RDS; o SSM Parameter Store pode ser usado para parâmetros não sensíveis ou configurações de menor criticidade. |
 | `sg-rds` | Amazon RDS for MariaDB | Entrada | TCP | 3306 | `sg-ec2-app` | Restringe acesso ao banco somente à camada de aplicação. |
 | `sg-rds` | Amazon RDS for MariaDB | Saída | Stateful | Dinâmica | Resposta ao tráfego iniciado pela aplicação | Security Groups são stateful; não há necessidade de liberar tráfego público de saída. |
 | `sg-rds` | Amazon RDS for MariaDB | Acesso público | N/A | N/A | Desativado | O banco deve permanecer privado, sem IP público e sem rota de internet. |
@@ -282,9 +282,9 @@ Security Groups funcionam como firewall stateful por recurso. Eles devem permiti
 
 Roles de IAM devem ser associadas a EC2 ou tarefas ECS conforme a arquitetura. O princípio de privilégio mínimo deve evitar permissões amplas e chaves estáticas. A aplicação deve receber somente acesso aos recursos necessários, como leitura de segredos, envio de logs e leitura ou escrita em buckets específicos quando previsto.
 
-### 14.6 Secrets Manager / Parameter Store
+### 14.6 AWS Secrets Manager e SSM Parameter Store
 
-Credenciais do banco e parâmetros sensíveis devem ser armazenados no AWS Secrets Manager ou no SSM Parameter Store. O backend deve obter as credenciais em tempo de execução por role IAM, evitando senhas em código, arquivos versionados ou variáveis expostas indevidamente.
+O padrão recomendado é AWS Secrets Manager para credenciais do Amazon RDS. O SSM Parameter Store pode ser usado para parâmetros não sensíveis ou configurações de menor criticidade. O backend deve obter as credenciais em tempo de execução por role IAM, evitando senhas em código, arquivos versionados ou variáveis expostas indevidamente.
 
 ### 14.7 RDS privado
 
@@ -387,7 +387,7 @@ O ambiente MVP não deve permanecer online sem liberação. Após testes ou demo
 - RDS sem acesso público.
 - Security Groups revisados.
 - Nenhuma porta 22 aberta para internet.
-- Credenciais no AWS Secrets Manager ou SSM Parameter Store.
+- Credenciais do Amazon RDS no AWS Secrets Manager; parâmetros não sensíveis podem usar SSM Parameter Store.
 - AWS CloudTrail ativado.
 - Amazon CloudWatch Logs ativado.
 - VPC Flow Logs ativado na arquitetura final.

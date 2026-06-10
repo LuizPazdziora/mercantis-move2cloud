@@ -12,7 +12,7 @@ Use este checklist antes de qualquer demonstração ou exposição temporária d
 | RDS sem acesso público | Pendente | `Publicly accessible` deve permanecer desativado. |
 | Security Groups revisados | Pendente | Validar origem por Security Group, não por `0.0.0.0/0` em camadas privadas. |
 | Porta 22 fechada para internet | Pendente | Usar Systems Manager quando houver necessidade operacional. |
-| Credenciais no Secrets Manager ou Parameter Store | Pendente | Não versionar senhas em código ou arquivos. |
+| Credenciais no AWS Secrets Manager | Pendente | O padrão recomendado é AWS Secrets Manager para credenciais do Amazon RDS. O SSM Parameter Store pode ser usado para parâmetros não sensíveis ou configurações de menor criticidade. |
 | CloudTrail ativado | Pendente | Obrigatório na arquitetura final e recomendado desde a validação. |
 | CloudWatch Logs ativado | Pendente | Centralizar logs da aplicação e infraestrutura. |
 | VPC Flow Logs ativado na arquitetura final | Pendente | Apoia auditoria e diagnóstico de rede. |

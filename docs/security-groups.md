@@ -6,8 +6,8 @@ Este documento consolida as regras de Security Groups do MVP e da arquitetura fi
 
 | Security Group | Recurso associado | Direção | Protocolo | Porta | Origem/Destino | Justificativa |
 |---|---|---|---|---:|---|---|
-| `sg-alb` | Application Load Balancer | Entrada | TCP | 443 | CloudFront/Internet | Tráfego HTTPS público controlado. |
-| `sg-alb` | Application Load Balancer | Entrada | TCP | 80 | CloudFront/Internet | Apenas redirect HTTP para HTTPS. |
+| `sg-alb` | Application Load Balancer | Entrada | TCP | 443 | CloudFront | Tráfego HTTPS público controlado. |
+| `sg-alb` | Application Load Balancer | Entrada | TCP | 80 | CloudFront | Apenas redirect HTTP para HTTPS. |
 | `sg-alb` | Application Load Balancer | Saída | TCP | 80/8080 | `sg-ec2-app` | Encaminhamento para containers na EC2 privada. |
 | `sg-ec2-app` | EC2 privada | Entrada | TCP | 80/8080 | `sg-alb` | Apenas ALB acessa a aplicação. |
 | `sg-ec2-app` | EC2 privada | Entrada | TCP | 22 | Bloqueado | SSH público não deve existir. |
@@ -34,7 +34,7 @@ Este documento consolida as regras de Security Groups do MVP e da arquitetura fi
 ## Restrições obrigatórias
 
 - RDS sem IP público.
-- Nenhum acesso direto de usuários à EC2, ECS ou RDS.
+- Nenhum acesso direto de usuários à EC2 do MVP, aos containers, aos serviços ECS da arquitetura final ou ao RDS.
 - Nenhum SSH público.
 - Frontend sem acesso direto ao banco.
 - Backend como única camada autorizada a acessar MariaDB.

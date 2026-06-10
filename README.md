@@ -21,9 +21,11 @@ O escopo não inclui pagamento real, integração logística, antifraude, dados 
 
 ## Diagramas
 
-- [Diagrama da infraestrutura do MVP](docs/images/diagrama-mvp.png)
-- [Diagrama da infraestrutura final TO-BE](docs/images/diagrama-final-to-be.png)
-- [Fonte do diagrama final TO-BE](infra/diagrams/diagrama-final-to-be.svg)
+* [Diagrama da infraestrutura do MVP](docs/images/diagrama-mvp.png)
+* [Diagrama da infraestrutura final TO-BE](docs/images/diagrama-final-to-be.png)
+* [PNG fonte do diagrama MVP](infra/diagrams/diagrama-mvp.png)
+* [PNG fonte do diagrama final TO-BE](infra/diagrams/diagrama-final-to-be.png)
+* [Fonte SVG do diagrama final TO-BE](infra/diagrams/diagrama-final-to-be.svg)
 
 ## Aviso operacional
 
