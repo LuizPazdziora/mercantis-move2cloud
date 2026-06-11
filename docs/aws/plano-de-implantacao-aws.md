@@ -1,57 +1,48 @@
 # Plano de Implantação AWS
 
-Este plano descreve uma referência inicial para futura implantação controlada do Mercantis Move2Cloud na AWS. Nenhum ambiente deve ficar público ou online sem aprovação explícita.
-
-## Etapas previstas
-
-1. Criar VPC dedicada com subnets públicas e privadas.
-2. Definir tabelas de rota e acesso de saída conforme necessidade operacional.
-3. Implantar banco Amazon RDS for MariaDB em subnet privada, sem IP público.
-4. Implantar camada de aplicação em subnet privada.
-5. Configurar entrada HTTPS controlada para a aplicação.
-6. Aplicar Security Groups por camada.
-7. Validar logs, métricas e trilhas de auditoria.
-8. Executar testes funcionais mínimos.
-9. Registrar evidências técnicas.
-10. Desligar ou remover recursos temporários quando a validação terminar.
-
-## Critérios de liberação
-
-- Nenhuma credencial real no repositório.
-- RDS sem acesso público.
-- Acesso ao banco permitido somente pelo backend.
-- Tráfego público usando HTTPS.
-- Custos monitorados antes e depois da validação.
-- Plano de desativação revisado.
-
-## Plano operacional detalhado
-
-Este plano é apenas documental. Nenhum comando AWS CLI, Terraform ou CloudFormation deve ser executado nesta etapa.
-
-| Etapa | Objetivo | Ação esperada | Resultado esperado | Risco principal | Como validar |
-| --- | --- | --- | --- | --- | --- |
-| 1. Preparação do repositório | Garantir base versionada e sem segredos | Revisar branch, `.gitignore`, `.env.example` e documentação | Repositório pronto para referência de deploy | Segredos acidentais no Git | Verificar `git status`, `.gitignore` e ausência de `.env` versionado |
-| 2. Validação local | Confirmar MVP funcional antes da AWS | Executar Docker Compose localmente | Frontend, backend e banco locais respondendo | Levar erro local para AWS | Validar `/health`, `/db-health`, `/products`, `/orders` e frontend |
-| 3. Criação da VPC | Isolar a rede do projeto | Planejar VPC `10.0.0.0/16` | Rede dedicada definida | CIDR conflitante | Conferir desenho de rede e intervalos |
-| 4. Criação das subnets | Separar camadas públicas e privadas | Planejar subnets públicas e privadas em duas zonas | Subnets adequadas para EC2 e RDS | RDS sem subnets em zonas distintas | Conferir DB subnet group planejado |
-| 5. Criação das route tables | Controlar tráfego de entrada e saída | Associar rota pública ao Internet Gateway e manter privadas sem exposição direta | Subnets públicas acessíveis e privadas isoladas | Rota pública aplicada em subnet privada | Revisar associações das route tables |
-| 6. Criação dos Security Groups | Segmentar acesso por camada | Definir `SG-EC2` e `SG-RDS` | Regras restritivas por origem | Porta `3306` aberta para internet | Conferir origem das regras e portas |
-| 7. Criação do RDS MariaDB privado | Substituir banco local por serviço gerenciado | Planejar RDS em subnets privadas, sem acesso público | Banco privado disponível para backend | RDS público ou sem backup | Validar public accessibility, subnets, backup e Security Group |
-| 8. Criação da EC2 | Hospedar containers Docker | Planejar EC2 com IAM Role e Security Group restritivo | Host de aplicação preparado | EC2 com acesso administrativo amplo | Conferir role, portas e atualização do sistema |
-| 9. Instalação do Docker na EC2 | Preparar runtime de containers | Instalar Docker conforme padrão aprovado | Docker disponível para frontend e backend | Instalação manual sem rastreabilidade | Validar versão do Docker e serviço ativo |
-| 10. Configuração das variáveis | Conectar backend ao RDS | Definir `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` fora do Git | Backend configurado sem segredos versionados | Senha exposta em arquivo ou imagem | Revisar origem das variáveis e permissões |
-| 11. Execução dos containers | Subir aplicação na EC2 | Executar frontend e backend sem container de banco | Containers ativos na EC2 | Usar banco local em vez de RDS | Validar containers e variáveis efetivas |
-| 12. Teste EC2 -> RDS | Confirmar conectividade privada | Testar conexão da EC2 ao endpoint do RDS na porta `3306` | Conexão permitida apenas pela rede privada | Falha de Security Group ou rota | Validar conexão e negar acesso externo |
-| 13. Teste do backend | Confirmar API em AWS | Validar endpoints do FastAPI | API responde e acessa banco | Erro de configuração de banco | Validar `/health` e `/db-health` |
-| 14. Teste do frontend | Confirmar experiência web | Acessar interface pelo endereço autorizado | Frontend carrega e consome API | CORS incorreto | Validar navegador e chamadas HTTP |
-| 15. Validação de logs | Garantir rastreabilidade | Conferir logs de containers, EC2 e RDS | Evidências disponíveis | Falha sem diagnóstico | Revisar CloudWatch ou plano de coleta |
-| 16. Checklist de segurança | Revisar riscos antes de liberação | Executar checklist AWS | Riscos críticos tratados | Publicação insegura | Conferir `docs/aws/checklist-aws.md` |
-| 17. Liberação controlada | Publicar somente com aprovação | Validar HTTPS, domínio, CORS, backups e evidências | Ambiente liberado de forma controlada | Exposição prematura | Registrar aprovação e evidências |
+Este plano descreve uma referência documental para futura implantação controlada do Mercantis Move2Cloud na AWS. Nenhum comando AWS CLI, Terraform ou CloudFormation deve ser executado nesta etapa.
 
 ## Premissas
 
-- O banco em AWS é Amazon RDS for MariaDB, não container Docker.
-- A EC2 executa apenas os containers de aplicação.
-- O RDS permanece em subnet privada.
-- Nenhum recurso deve ser publicado sem validação de segurança.
-- A exposição pública futura deve usar HTTPS.
+- A aplicação local continua usando Docker Compose.
+- A referência AWS usa EC2 privada com Docker para frontend e backend.
+- O banco em AWS é Amazon RDS for MariaDB em subnet privada de banco.
+- O acesso externo ocorre pela camada de borda e pelo Application Load Balancer.
+- A EC2 não recebe tráfego direto da internet.
+- Nenhum recurso deve ficar público sem validação e aprovação.
+
+## Plano Operacional
+
+| Etapa | Objetivo | Ação esperada | Resultado esperado | Risco principal | Como validar |
+| --- | --- | --- | --- | --- | --- |
+| 1. Validar MVP local | Confirmar base funcional | Executar Docker Compose e endpoints locais | Frontend, backend e banco locais respondendo | Levar falha local para AWS | Validar `/health`, `/db-health`, `/products`, `/orders` e frontend |
+| 2. Criar VPC | Isolar a rede do projeto | Planejar VPC `10.0.0.0/16` em `sa-east-1` | Rede dedicada definida | CIDR conflitante | Conferir desenho e intervalos |
+| 3. Criar subnets públicas e privadas | Separar entrada, aplicação e banco | Definir subnets públicas, privadas de aplicação e privadas de banco | Camadas separadas por rede | Recurso sensível em subnet pública | Revisar CIDRs e associações |
+| 4. Criar Internet Gateway | Permitir entrada pública controlada | Associar Internet Gateway à VPC | Subnets públicas com saída/entrada controlada | Rota pública aplicada em subnet privada | Conferir route tables |
+| 5. Criar NAT Gateway | Permitir saída controlada da aplicação privada | Posicionar NAT Gateway na camada pública | Host privado com saída controlada | Custo ou ponto único de falha no MVP | Validar rota privada para NAT |
+| 6. Criar Route Tables | Controlar rotas por camada | Associar rotas públicas ao IGW e privadas ao NAT quando necessário | Tráfego separado por finalidade | Banco com rota pública | Revisar associações |
+| 7. Criar Security Groups | Segmentar tráfego | Definir `SG-ALB`, `SG-EC2-APP` e `SG-RDS` | Comunicação mínima entre camadas | Porta sensível aberta | Conferir origem, destino e porta |
+| 8. Criar RDS MariaDB privado | Substituir banco local | Planejar RDS em subnets privadas de banco | Banco gerenciado privado | RDS público ou sem backup | Validar public accessibility, subnet group, backup e SG |
+| 9. Criar EC2 em subnet privada | Hospedar containers | Posicionar EC2 na subnet privada de aplicação | Host Docker sem exposição direta | Instância posicionada em camada incorreta | Conferir subnet, IP público e regras de entrada |
+| 10. Configurar IAM Role | Evitar access keys fixas | Associar role mínima à EC2 | Permissões controladas | Permissão ampla demais | Revisar políticas IAM |
+| 11. Instalar Docker na EC2 | Preparar runtime | Instalar Docker conforme padrão aprovado | Host pronto para containers | Instalação sem rastreabilidade | Validar serviço Docker |
+| 12. Configurar variáveis para RDS | Conectar backend ao banco | Definir `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` fora do Git | Backend preparado para RDS | Segredo exposto | Revisar origem das variáveis |
+| 13. Executar containers | Subir aplicação | Executar `frontend-container` e `backend-api-container` | Aplicação ativa na EC2 | Usar container de banco na AWS | Validar containers e logs |
+| 14. Configurar ALB | Publicar entrada da aplicação | Criar listeners e target group para EC2 privada | ALB encaminhando para aplicação | Health check incorreto | Validar target healthy |
+| 15. Configurar CloudFront/WAF/ACM | Preparar borda segura | Associar HTTPS, regras WAF e distribuição | Entrada pública protegida | Certificado ou regra incorreta | Validar HTTPS e regras WAF |
+| 16. Validar ALB -> EC2 -> RDS | Confirmar fluxo fim a fim | Testar acesso externo e conexão ao banco | Aplicação responde com banco privado | Falha de rota ou SG | Validar frontend, API e `/db-health` |
+| 17. Validar logs e métricas | Garantir rastreabilidade | Conferir CloudWatch para aplicação e infraestrutura | Evidências disponíveis | Falha sem diagnóstico | Revisar logs, métricas e alarmes |
+| 18. Aplicar checklist de segurança | Reduzir risco antes de liberação | Executar `docs/aws/checklist-aws.md` | Riscos críticos tratados | Publicação insegura | Registrar evidências |
+| 19. Liberar ambiente após aprovação | Controlar publicação | Liberar somente com validação formal | Ambiente publicado de forma controlada | Exposição prematura | Registrar aprovação e plano de rollback |
+
+## Critérios de Liberação
+
+- Nenhuma credencial real no repositório.
+- `.env` fora do versionamento.
+- EC2 em subnet privada.
+- RDS em subnet privada e sem IP público.
+- ALB em subnets públicas.
+- Porta `3306` permitida somente da aplicação para o RDS.
+- HTTPS planejado e certificado definido.
+- CORS restrito ao domínio correto.
+- Logs, métricas, backup e rollback documentados.

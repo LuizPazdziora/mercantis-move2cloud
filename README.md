@@ -4,7 +4,7 @@ O Mercantis Move2Cloud é um MVP de aplicação web containerizada para validar 
 
 O ambiente atual é local, executado com Docker Compose, e não cria recursos reais na AWS.
 
-## Status atual do MVP
+## Status Atual do MVP
 
 - Frontend funcional em `http://localhost:8080`.
 - Backend FastAPI em `http://localhost:8000`.
@@ -14,7 +14,7 @@ O ambiente atual é local, executado com Docker Compose, e não cria recursos re
 - MariaDB publicado localmente em `127.0.0.1:3307`.
 - Fluxo validado: `Frontend -> Backend FastAPI -> MariaDB`.
 
-## Arquitetura local
+## Arquitetura Local
 
 ```text
 Navegador
@@ -35,7 +35,7 @@ O frontend não acessa o banco diretamente. A comunicação com o MariaDB é fei
 - MariaDB como banco local.
 - Docker Compose para orquestração local.
 
-## Estrutura de pastas
+## Estrutura de Pastas
 
 ```text
 backend/
@@ -49,7 +49,7 @@ codex-instructions.md
 README.md
 ```
 
-## Configurar variáveis de ambiente
+## Configurar Variáveis de Ambiente
 
 Antes de executar o Docker Compose, crie o arquivo `.env` local a partir do exemplo versionado.
 
@@ -67,7 +67,7 @@ cp .env.example .env
 
 O arquivo `.env` é necessário apenas localmente, não deve ser versionado e não deve conter credenciais reais de produção.
 
-## Subir o ambiente
+## Subir o Ambiente
 
 ```powershell
 docker compose up -d --build
@@ -85,7 +85,7 @@ Resultado esperado:
 - `mercantis-backend` em execução.
 - `mercantis-database` em execução e `healthy`.
 
-## URLs locais
+## URLs Locais
 
 - Frontend: `http://localhost:8080`
 - Backend Swagger: `http://localhost:8000/docs`
@@ -94,7 +94,7 @@ Resultado esperado:
 - Produtos: `http://localhost:8000/products`
 - Pedidos: `http://localhost:8000/orders`
 
-## Validação rápida
+## Validação Rápida
 
 ```powershell
 Invoke-RestMethod http://localhost:8000/health
@@ -139,30 +139,31 @@ Em uma implantação futura na AWS, as origens CORS devem ser restritas aos dom�
 
 ## Arquitetura AWS de Referência
 
-A arquitetura AWS de referência foi documentada para orientar uma implantação futura simples, segura e controlada. Nenhum recurso real foi criado na AWS nesta etapa, a aplicação não foi publicada online e não foram geradas credenciais reais.
+A arquitetura AWS de referência foi atualizada para refletir o diagrama "Mercantis Move2Cloud - Infraestrutura AWS do MVP". Nenhum recurso real foi criado na AWS nesta etapa, a aplicação não foi publicada online e não foram geradas credenciais reais.
 
-A estratégia permanece como replatform com refactor parcial:
+Fluxo de referência:
 
-- frontend e backend continuam containerizados;
-- a EC2 é usada como host Docker no MVP AWS;
-- o MariaDB local é substituído por Amazon RDS for MariaDB;
-- o RDS fica em subnet privada;
-- Security Groups segmentam acesso entre internet, EC2 e banco;
-- Secrets Manager e CloudWatch são recomendações de evolução.
+```text
+Usuários
+-> HTTPS 443
+-> Amazon CloudFront / AWS WAF / AWS Shield Standard / ACM
+-> Application Load Balancer em subnets públicas
+-> EC2 em subnet privada de aplicação executando containers Docker
+-> Amazon RDS for MariaDB em subnet privada de banco
+```
 
-Documentos principais:
+Principais componentes documentados:
 
-- [Arquitetura AWS](docs/aws/arquitetura-aws.md)
-- [Rede e VPC](docs/aws/rede-vpc.md)
-- [EC2 com Docker](docs/aws/ec2-docker.md)
-- [RDS MariaDB](docs/aws/rds-mariadb.md)
-- [Segurança AWS](docs/aws/seguranca.md)
-- [IAM](docs/aws/iam.md)
-- [Observabilidade](docs/aws/observabilidade.md)
-- [Backup e rollback](docs/aws/backup-rollback.md)
-- [Plano de implantação AWS](docs/aws/plano-de-implantacao-aws.md)
-- [Checklist AWS](docs/aws/checklist-aws.md)
-- [Diagrama AWS de referência](docs/arquitetura/diagrama-aws-referencia.md)
+- CloudFront, AWS WAF, AWS Shield Standard e ACM na camada de borda.
+- Application Load Balancer nas subnets públicas.
+- EC2 privada executando `frontend-container` e `backend-api-container`.
+- RDS MariaDB privado, sem IP público.
+- NAT Gateway para saída controlada da EC2 privada.
+- CloudWatch para logs, métricas e alarmes.
+- Secrets Manager como evolução recomendada para segredos.
+- S3 como serviço auxiliar/opcional para artefatos, backups exportados ou arquivos estáticos futuros.
+
+A aplicação local continua usando Docker Compose. A referência AWS usa EC2 privada com Docker e RDS gerenciado.
 
 ## Documentação
 
@@ -176,25 +177,31 @@ Documentos principais:
 - [Rede e VPC](docs/aws/rede-vpc.md)
 - [EC2 com Docker](docs/aws/ec2-docker.md)
 - [RDS MariaDB](docs/aws/rds-mariadb.md)
+- [Segurança AWS](docs/aws/seguranca.md)
 - [IAM](docs/aws/iam.md)
 - [Observabilidade](docs/aws/observabilidade.md)
 - [Backup e rollback](docs/aws/backup-rollback.md)
+- [Validação AWS](docs/aws/validacao.md)
 - [Plano de implantação AWS](docs/aws/plano-de-implantacao-aws.md)
-- [Segurança AWS](docs/aws/seguranca.md)
 - [Checklist AWS](docs/aws/checklist-aws.md)
+- [Diagrama AWS de referência](docs/arquitetura/diagrama-aws-referencia.md)
 
-## Restrições atuais
+## Restrições Atuais
 
 - Não criar recursos reais na AWS.
+- Não executar AWS CLI nesta etapa.
+- Não criar Terraform ou CloudFormation nesta etapa.
 - Não publicar a aplicação online sem liberação explícita.
 - Não versionar `.env`.
 - Não usar credenciais reais.
 - Não usar dados reais de clientes.
 - Não adicionar autenticação, pagamento, logística, antifraude ou integrações externas nesta etapa.
 
-## Próximos passos planejados
+## Próximos Passos Planejados
 
-- Detalhar arquitetura AWS de referência com VPC, subnets e Security Groups.
-- Planejar Amazon RDS for MariaDB em subnet privada.
-- Definir estratégia de secrets para AWS.
-- Documentar observabilidade, backup, validação de segurança e plano de desativação de recursos temporários.
+- Revisar e validar os diagramas finais.
+- Exportar diagramas em PNG/SVG.
+- Consolidar evidências de execução local.
+- Revisar documentação final.
+- Preparar apresentação técnica do MVP.
+- Planejar implantação controlada em AWS apenas após liberação.

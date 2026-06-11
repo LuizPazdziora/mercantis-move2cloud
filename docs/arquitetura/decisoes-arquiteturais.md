@@ -1,56 +1,56 @@
 # Decisões Arquiteturais
 
-## Estratégia de migração
+Este documento registra decisões técnicas do Mercantis Move2Cloud para orientar a evolução do MVP local e da arquitetura AWS de referência. Nenhum recurso real foi criado na AWS nesta etapa.
+
+## Estratégia de Migração
 
 **Decisão:** adotar replatform com refactor parcial.
 
-**Justificativa:** a aplicação é preparada em containers e o banco de dados é planejado para evolução para Amazon RDS for MariaDB, reduzindo dependência de infraestrutura local sem exigir reescrita completa.
+**Justificativa:** a aplicação é preparada em containers e o banco de dados é planejado para evoluir para Amazon RDS for MariaDB, reduzindo dependência de infraestrutura local sem exigir reescrita completa.
 
 **Impacto positivo:** permite validar o MVP localmente, separar camadas e criar caminho de evolução para AWS com menor risco.
 
-**Limitações e pontos de atenção:** a arquitetura local não representa alta disponibilidade nem operação produtiva. A implantação AWS ainda precisa de desenho formal de rede, segurança, observabilidade e custos.
+**Limitações:** a arquitetura local não representa alta disponibilidade nem operação produtiva.
+
+**Evolução futura:** avançar para implantação controlada em AWS somente após validação documental, segurança, evidências e aprovação.
 
 ## Backend em FastAPI
 
 **Decisão:** usar Python com FastAPI para a API do MVP.
 
-**Justificativa:** FastAPI oferece implementação simples de APIs REST, validação com Pydantic e documentação automática em Swagger.
+**Justificativa:** FastAPI oferece implementação objetiva de APIs REST, validação com Pydantic e documentação automática em Swagger.
 
-**Impacto positivo:** acelera a validação do MVP e facilita testes dos endpoints `health`, `db-health`, `products` e `orders`.
+**Impacto positivo:** acelera a validação dos endpoints `health`, `db-health`, `products` e `orders`.
 
-**Limitações e pontos de atenção:** autenticação, autorização, rate limit e políticas avançadas de segurança não fazem parte desta etapa.
+**Limitações:** autenticação, autorização, rate limit e políticas avançadas de segurança não fazem parte desta etapa.
 
-## Banco MariaDB
+**Evolução futura:** adicionar autenticação e controles de acesso em fase posterior, se necessário.
 
-**Decisão:** usar MariaDB no ambiente local e planejar Amazon RDS for MariaDB para produção futura.
-
-**Justificativa:** MariaDB atende ao modelo relacional do MVP e mantém compatibilidade com o serviço gerenciado planejado na AWS.
-
-**Impacto positivo:** reduz diferenças entre desenvolvimento local e banco planejado para cloud.
-
-**Limitações e pontos de atenção:** scripts `init.sql` e `seed.sql` só são aplicados automaticamente quando o volume do banco é criado. Volumes antigos podem exigir ajuste manual ou recriação controlada.
-
-## Docker Compose local
-
-**Decisão:** usar Docker Compose para orquestrar `frontend`, `backend` e `database`.
-
-**Justificativa:** Compose simplifica a execução local e reproduz a separação básica entre camadas.
-
-**Impacto positivo:** o ambiente sobe com um único comando e mantém comunicação interna previsível entre serviços.
-
-**Limitações e pontos de atenção:** Docker Compose não substitui uma arquitetura produtiva com alta disponibilidade, balanceamento, observabilidade e automação de deploy.
-
-## Frontend estático com Nginx
+## Frontend Estático com Nginx
 
 **Decisão:** manter o frontend em HTML, CSS e JavaScript puro, servido por Nginx.
 
 **Justificativa:** o MVP precisa de uma interface funcional e leve, sem complexidade de framework.
 
-**Impacto positivo:** reduz dependências, simplifica build e torna a interface fácil de auditar.
+**Impacto positivo:** reduz dependências, simplifica build e facilita auditoria.
 
-**Limitações e pontos de atenção:** uma evolução futura pode exigir framework ou pipeline de build se a interface crescer em complexidade.
+**Limitações:** uma interface mais complexa pode exigir framework ou pipeline de build.
 
-## Porta interna 3306 e porta local 3307
+**Evolução futura:** avaliar framework frontend apenas se houver aumento real de complexidade.
+
+## Docker Compose Local
+
+**Decisão:** usar Docker Compose para orquestrar `frontend`, `backend` e `database` localmente.
+
+**Justificativa:** Compose simplifica execução local e reproduz a separação básica entre camadas.
+
+**Impacto positivo:** o ambiente sobe com um único comando e mantém comunicação interna previsível.
+
+**Limitações:** Docker Compose não substitui arquitetura produtiva com rede, balanceamento, observabilidade e segurança gerenciada.
+
+**Evolução futura:** manter Docker Compose apenas para desenvolvimento e usar referência AWS separada para implantação controlada.
+
+## Porta Interna 3306 e Porta Local 3307
 
 **Decisão:** manter MariaDB internamente em `3306` e publicar no host local em `3307`.
 
@@ -58,9 +58,11 @@
 
 **Impacto positivo:** evita conflito de porta local sem alterar a comunicação interna do backend com o banco.
 
-**Limitações e pontos de atenção:** ferramentas locais devem usar `127.0.0.1:3307`, enquanto o backend usa `database:3306`.
+**Limitações:** ferramentas locais devem usar `127.0.0.1:3307`, enquanto o backend usa `database:3306`.
 
-## Variáveis de ambiente
+**Evolução futura:** em AWS, o backend usará o endpoint privado do RDS na porta `3306`.
+
+## Variáveis de Ambiente
 
 **Decisão:** configurar banco, portas e CORS por variáveis de ambiente.
 
@@ -68,9 +70,11 @@
 
 **Impacto positivo:** facilita execução local e prepara o projeto para ambientes futuros.
 
-**Limitações e pontos de atenção:** valores sensíveis devem ser tratados por mecanismos próprios em AWS, como Secrets Manager, e não por arquivos versionados.
+**Limitações:** valores sensíveis exigem gestão adequada e não devem ser tratados apenas por arquivos locais em ambiente AWS.
 
-## Não versionamento de `.env`
+**Evolução futura:** usar AWS Secrets Manager para segredos em implantação controlada.
+
+## Não Versionamento de `.env`
 
 **Decisão:** manter `.env` fora do Git e versionar apenas `.env.example`.
 
@@ -78,139 +82,169 @@
 
 **Impacto positivo:** reduz risco de vazamento acidental de credenciais.
 
-**Limitações e pontos de atenção:** o usuário deve criar `.env` localmente antes de executar Docker Compose.
+**Limitações:** o usuário deve criar `.env` localmente antes de executar Docker Compose.
 
-## CORS restrito ao frontend local
+**Evolução futura:** substituir segredos locais por serviço gerenciado em AWS.
 
-**Decisão:** permitir a origem `http://localhost:8080` por padrão.
+## CORS Restrito
+
+**Decisão:** permitir a origem local `http://localhost:8080` por padrão.
 
 **Justificativa:** o frontend local precisa consumir o backend em `http://localhost:8000`.
 
 **Impacto positivo:** evita CORS completamente aberto durante a validação local.
 
-**Limitações e pontos de atenção:** em uma futura implantação AWS, as origens devem ser substituídas pelos domínios autorizados e revisadas junto com a camada de segurança.
+**Limitações:** a origem local não representa o domínio final de uma implantação publicada.
 
-## Banco privado na arquitetura AWS futura
-
-**Decisão:** planejar o banco AWS como Amazon RDS for MariaDB em subnet privada.
-
-**Justificativa:** o banco não deve ser acessível diretamente pela internet.
-
-**Impacto positivo:** reduz superfície de ataque e mantém o backend como única camada autorizada a acessar dados.
-
-**Limitações e pontos de atenção:** a futura implantação precisa definir VPC, subnets privadas, Security Groups, backups, monitoramento e estratégia de acesso operacional.
-
-## Fora do escopo desta etapa
-
-**Decisão:** não adicionar autenticação, pagamento, logística, antifraude, usuários reais, Kubernetes, ECS, Lambda ou API Gateway nesta etapa.
-
-**Justificativa:** o fechamento atual é da versão local do MVP, com foco em validação funcional, documentação e preparação técnica.
-
-**Impacto positivo:** mantém o escopo controlado e reduz risco de introduzir complexidade prematura.
-
-**Limitações e pontos de atenção:** esses temas podem ser avaliados em fases futuras, após estabilização da base local e definição da arquitetura AWS.
+**Evolução futura:** restringir CORS ao domínio oficial da aplicação em AWS.
 
 # Decisões AWS de Referência
 
-As decisões abaixo documentam a arquitetura AWS alvo para uma implantação simples, segura e controlada. Nenhum recurso real foi criado nesta etapa.
+## Camada de Borda com CloudFront, WAF, Shield e ACM
 
-## Uso de EC2 + Docker no MVP AWS
+**Decisão:** documentar CloudFront, AWS WAF, AWS Shield Standard e AWS Certificate Manager como camada de borda para publicação futura.
 
-**Decisão:** executar os containers `frontend` e `backend` em Amazon EC2 com Docker.
+**Justificativa:** a camada de borda centraliza HTTPS, distribuição, proteção contra ataques web comuns e certificado TLS.
 
-**Justificativa:** a abordagem preserva o empacotamento local, reduz mudanças na aplicação e permite validar a migração com menor complexidade inicial.
+**Impacto positivo:** reduz exposição direta da aplicação e cria base para publicação pública controlada.
 
-**Impacto positivo:** acelera a transição para AWS mantendo a estratégia de replatform com refactor parcial.
+**Limitações:** adiciona configuração, custo e necessidade de validação de regras WAF e certificados.
 
-**Limitações:** exige gestão operacional da EC2, atualizações do sistema, hardening, logs e controle manual de capacidade.
+**Evolução futura:** associar domínio, certificado ACM, distribuição CloudFront e regras WAF após aprovação de publicação.
 
-**Evolução futura:** avaliar Application Load Balancer, Auto Scaling e ECS/Fargate quando houver necessidade de maior automação e resiliência.
+## ALB Como Ponto de Entrada da Aplicação
 
-## Uso de RDS MariaDB privado
+**Decisão:** usar Application Load Balancer nas subnets públicas como ponto de entrada da camada de aplicação.
 
-**Decisão:** substituir o MariaDB local por Amazon RDS for MariaDB em subnet privada.
+**Justificativa:** o ALB encaminha tráfego autorizado para a EC2 privada sem expor a instância diretamente à internet.
 
-**Justificativa:** o RDS fornece banco gerenciado, backups automáticos e melhor isolamento operacional sem alterar o modelo relacional do MVP.
+**Impacto positivo:** melhora segmentação, health checks e controle do tráfego HTTP/HTTPS.
 
-**Impacto positivo:** reduz exposição do banco e remove a necessidade de executar banco em container na AWS.
+**Limitações:** o MVP inicial pode ter apenas um host de aplicação, sem alta disponibilidade completa.
 
-**Limitações:** envolve custo gerenciado, configuração de subnet group, políticas de backup e atenção a migrações de schema.
+**Evolução futura:** adicionar múltiplas instâncias em subnets privadas diferentes e Auto Scaling.
 
-**Evolução futura:** habilitar Multi-AZ, criptografia gerenciada por KMS e integração com Secrets Manager.
+## EC2 Privada com Docker no MVP AWS
 
-## Uso de VPC com subnets públicas e privadas
+**Decisão:** executar `frontend-container` e `backend-api-container` em uma EC2 privada com Docker.
 
-**Decisão:** documentar VPC dedicada com subnets públicas para entrada controlada e subnets privadas para banco.
+**Justificativa:** preserva o empacotamento local em containers e aumenta segurança ao remover exposição direta da EC2.
 
-**Justificativa:** a separação de rede reduz superfície de ataque e cria base para evolução segura.
+**Impacto positivo:** mantém simplicidade operacional do MVP e alinha o desenho ao fluxo ALB -> EC2 privada.
 
-**Impacto positivo:** permite posicionar EC2 e RDS em camadas distintas, com rotas e regras coerentes.
+**Limitações:** exige gestão operacional da instância, sistema operacional, Docker, logs e atualizações.
 
-**Limitações:** o MVP inicial ainda não entrega alta disponibilidade completa.
+**Evolução futura:** avaliar ECS/Fargate se a operação exigir orquestração gerenciada.
 
-**Evolução futura:** manter EC2 em subnet privada atrás de Application Load Balancer público.
+## RDS MariaDB Privado
 
-## Uso de Security Groups segmentados
+**Decisão:** substituir o MariaDB local por Amazon RDS for MariaDB em subnets privadas de banco.
 
-**Decisão:** definir Security Groups separados para EC2 e RDS.
+**Justificativa:** o banco gerenciado reduz responsabilidade operacional e evita exposição direta à internet.
 
-**Justificativa:** regras por camada permitem controlar origem, destino e porta com precisão.
+**Impacto positivo:** melhora isolamento, backup e monitoramento do banco.
 
-**Impacto positivo:** a porta `3306` do RDS pode ser liberada somente para o Security Group da EC2.
+**Limitações:** exige DB Subnet Group, Security Group correto, política de backup e cuidado com custos.
+
+**Evolução futura:** habilitar Multi-AZ e criptografia com KMS conforme necessidade.
+
+## NAT Gateway Para Saída da Subnet Privada
+
+**Decisão:** documentar NAT Gateway para saída controlada da EC2 privada.
+
+**Justificativa:** a EC2 pode precisar acessar a internet para atualizações e downloads sem receber conexões externas.
+
+**Impacto positivo:** preserva isolamento de entrada e permite operação básica do host privado.
+
+**Limitações:** um único NAT Gateway reduz custo, mas não oferece resiliência por zona.
+
+**Evolução futura:** usar NAT Gateway por zona de disponibilidade em ambiente de alta disponibilidade.
+
+## Security Groups Segmentados
+
+**Decisão:** usar `SG-ALB`, `SG-EC2-APP` e `SG-RDS` para separar tráfego por camada.
+
+**Justificativa:** cada camada deve aceitar apenas a origem e a porta necessárias.
+
+**Impacto positivo:** restringe o fluxo a `CloudFront/Internet -> ALB -> EC2 privada -> RDS privado`.
 
 **Limitações:** regras incorretas podem expor serviços sensíveis ou bloquear a aplicação.
 
-**Evolução futura:** revisar regras periodicamente e automatizar validações de configuração.
+**Evolução futura:** automatizar validações de regras e revisar Security Groups antes de publicação.
 
-## Uso futuro de Secrets Manager
+## CloudWatch Para Logs e Métricas
 
-**Decisão:** recomendar AWS Secrets Manager para segredos em evolução AWS.
+**Decisão:** recomendar CloudWatch para logs, métricas e alarmes.
 
-**Justificativa:** senhas e tokens não devem ficar em arquivos versionados, Dockerfile, imagens ou comandos de deploy.
+**Justificativa:** a operação em AWS precisa de rastreabilidade para aplicação, EC2, ALB, WAF e RDS.
 
-**Impacto positivo:** reduz risco de vazamento e permite controle de acesso via IAM Role.
+**Impacto positivo:** melhora diagnóstico de falhas e acompanhamento de disponibilidade.
 
-**Limitações:** adiciona custo e exige integração operacional ou de código.
+**Limitações:** exige configuração de coleta, retenção, alarmes e controle de custos.
+
+**Evolução futura:** criar dashboards e alarmes formais antes de publicação pública.
+
+## Secrets Manager Como Evolução
+
+**Decisão:** recomendar AWS Secrets Manager para segredos em AWS.
+
+**Justificativa:** senhas e tokens não devem ficar em arquivos versionados, imagens Docker ou comandos de execução.
+
+**Impacto positivo:** reduz risco de vazamento e permite acesso controlado por IAM Role.
+
+**Limitações:** adiciona custo e requer integração operacional.
 
 **Evolução futura:** conceder leitura apenas à role da aplicação e planejar rotação de segredos.
 
-## Uso futuro de CloudWatch
+## S3 Opcional Para Apoio
 
-**Decisão:** recomendar CloudWatch Logs e Metrics para observabilidade.
+**Decisão:** documentar Amazon S3 como componente auxiliar/opcional.
 
-**Justificativa:** a operação em AWS precisa de logs, métricas e alarmes para diagnóstico e resposta a incidentes.
+**Justificativa:** S3 pode apoiar artefatos, arquivos estáticos futuros ou backups exportados, mas não é dependência obrigatória do MVP.
 
-**Impacto positivo:** melhora rastreabilidade de falhas em EC2, containers, backend e RDS.
+**Impacto positivo:** deixa clara uma possibilidade de evolução sem acoplar a aplicação ao serviço nesta etapa.
 
-**Limitações:** exige configuração de agente, retenção, alarmes e controle de custos.
+**Limitações:** exige política de acesso, criptografia, versionamento e bloqueio de acesso público quando utilizado.
 
-**Evolução futura:** criar painéis, alarmes e procedimentos de resposta operacional.
+**Evolução futura:** avaliar uso de S3 apenas se houver necessidade concreta de armazenamento de objetos.
 
-## Não uso inicial de ECS/Fargate
+## Não Uso Inicial de ECS/Fargate
 
-**Decisão:** não adotar ECS/Fargate na primeira referência AWS.
+**Decisão:** não adotar ECS/Fargate na referência inicial do MVP.
 
-**Justificativa:** o objetivo inicial é validar uma implantação simples com EC2 + Docker, mantendo baixa complexidade.
+**Justificativa:** o objetivo atual é validar uma implantação simples com EC2 privada e Docker.
 
-**Impacto positivo:** reduz curva de configuração e facilita comparação com o ambiente local.
+**Impacto positivo:** reduz complexidade e mantém proximidade com o ambiente local.
 
 **Limitações:** a EC2 exige mais responsabilidade operacional do que um serviço gerenciado de containers.
 
-**Evolução futura:** migrar para ECS/Fargate se houver necessidade de orquestração gerenciada.
+**Evolução futura:** migrar para ECS/Fargate se houver demanda por orquestração gerenciada.
 
-## Não uso inicial de Kubernetes
+## Não Uso Inicial de Kubernetes
 
 **Decisão:** não usar Kubernetes no MVP AWS.
 
-**Justificativa:** Kubernetes adicionaria complexidade incompatível com a necessidade atual do projeto.
+**Justificativa:** Kubernetes adicionaria complexidade incompatível com a etapa atual.
 
-**Impacto positivo:** mantém arquitetura objetiva e alinhada ao escopo de validação.
+**Impacto positivo:** mantém a arquitetura objetiva e adequada ao escopo do MVP.
 
 **Limitações:** não há recursos nativos de orquestração avançada, autoscaling de pods ou service mesh.
 
-**Evolução futura:** reavaliar somente se a escala e a complexidade justificarem.
+**Evolução futura:** reavaliar somente se escala e complexidade justificarem.
 
-## Não exposição pública sem validação
+## Expansão Futura Para Alta Disponibilidade
+
+**Decisão:** reservar a segunda zona de disponibilidade para expansão futura.
+
+**Justificativa:** o diagrama prevê subnets 1B para aplicação e banco, mas o MVP não promete alta disponibilidade completa.
+
+**Impacto positivo:** cria caminho técnico para evolução sem superdimensionar a primeira implantação.
+
+**Limitações:** a versão inicial pode ter pontos únicos de falha, como uma EC2 e um NAT Gateway.
+
+**Evolução futura:** usar múltiplas EC2, Auto Scaling, NAT Gateway por AZ e RDS Multi-AZ.
+
+## Não Exposição Pública Sem Validação
 
 **Decisão:** não publicar a aplicação em ambiente aberto sem validação técnica e aprovação.
 
@@ -220,4 +254,4 @@ As decisões abaixo documentam a arquitetura AWS alvo para uma implantação sim
 
 **Limitações:** a aplicação permanece restrita até concluir os controles mínimos.
 
-**Evolução futura:** executar checklist de publicação, registrar evidências e liberar o acesso de forma controlada.
+**Evolução futura:** executar checklist de publicação, registrar evidências e liberar acesso de forma controlada.

@@ -1,51 +1,57 @@
 # Observabilidade
 
-Este documento descreve a observabilidade recomendada para a arquitetura AWS de referencia do Mercantis Move2Cloud.
+Este documento descreve a observabilidade recomendada para a arquitetura AWS de referência do Mercantis Move2Cloud.
 
 ## Papel do CloudWatch
 
-CloudWatch deve centralizar metricas, logs e alarmes da aplicacao e dos recursos AWS. A coleta deve permitir diagnosticar indisponibilidade, degradacao de desempenho, falhas de banco e consumo anormal de recursos.
+Amazon CloudWatch é o serviço recomendado para centralizar logs, métricas e alarmes da aplicação e dos componentes AWS. A observabilidade deve permitir diagnosticar falhas no fluxo `CloudFront/WAF -> ALB -> EC2 privada -> RDS`.
 
-## Logs da aplicacao
+## Logs Recomendados
 
-Os containers `frontend` e `backend` devem registrar logs em saida padrao para facilitar coleta por agente ou integracao futura. Logs do backend devem permitir identificar:
+- Logs do backend FastAPI.
+- Logs do Nginx/frontend.
+- Logs da EC2 e do Docker.
+- Logs do RDS MariaDB.
+- Logs do Application Load Balancer.
+- Logs do AWS WAF.
+- Eventos relevantes de saúde dos containers.
 
-- chamadas aos endpoints principais;
-- falhas de validacao;
-- erros de conexao com banco;
-- status do endpoint `/health`;
-- status do endpoint `/db-health`.
+## Métricas Recomendadas
 
-## Logs da EC2
-
-A EC2 deve ter logs de sistema operacional e Docker monitorados conforme maturidade operacional. Em evolucao, o CloudWatch Agent pode coletar logs de sistema, uso de disco e memoria.
-
-## Metricas basicas
-
-| Recurso | Metrica recomendada |
+| Componente | Métrica |
 | --- | --- |
 | EC2 | CPU |
-| EC2 | memoria, se agente configurado |
-| EC2 | uso de disco |
-| RDS | conexoes ativas |
+| EC2 | Memória, se CloudWatch Agent estiver configurado |
+| EC2 | Uso de disco |
+| Docker | Estado dos containers |
+| ALB | Erros 4xx e 5xx |
+| ALB | Target health |
+| ALB | Latência |
 | RDS | CPU |
-| RDS | armazenamento livre |
-| Aplicacao | erros HTTP |
-| Aplicacao | disponibilidade de `/health` |
-| Aplicacao | disponibilidade de `/db-health` |
+| RDS | Conexões |
+| RDS | Storage livre |
+| RDS | Latência de leitura e escrita |
+| WAF | Requisições bloqueadas |
+| Aplicação | Falhas em `/health` e `/db-health` |
 
-## Alarmes recomendados
+## Alarmes Recomendados
 
-- CPU alta na EC2 por periodo sustentado.
-- Armazenamento baixo no RDS.
-- Falha recorrente de health check.
-- Indisponibilidade da aplicacao.
-- Crescimento inesperado de erros HTTP.
-- Numero anormal de conexoes no RDS.
+- CPU alta na EC2 por período sustentado.
+- Disco baixo na EC2.
+- Targets unhealthy no ALB.
+- Erros 5xx no ALB.
+- Falha do endpoint `/health`.
+- Falha do endpoint `/db-health`.
+- CPU alta no RDS.
+- Storage baixo no RDS.
+- Crescimento anormal de conexões no RDS.
+- Bloqueios recorrentes no WAF.
 
-## Evidencias esperadas
+## Evidências Esperadas
 
-- Logs centralizados ou plano documentado de coleta.
-- Alarmes definidos antes de publicacao real.
-- Painel basico com EC2, RDS e disponibilidade.
-- Procedimento de investigacao para falhas de banco e aplicacao.
+- Logs disponíveis para backend e frontend.
+- Estado dos containers registrado.
+- Métricas básicas de EC2 e RDS.
+- Health checks do ALB documentados.
+- Alarmes planejados antes de publicação pública.
+- Procedimento de investigação para falhas de aplicação, rede e banco.

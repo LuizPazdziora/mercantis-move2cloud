@@ -1,52 +1,72 @@
 # EC2 com Docker
 
-Este documento descreve o papel da Amazon EC2 como host Docker na arquitetura AWS de referencia do Mercantis Move2Cloud.
+Este documento descreve a Amazon EC2 como host Docker privado na arquitetura AWS de referência do Mercantis Move2Cloud.
 
 ## Papel da EC2 no MVP
 
-A EC2 executa os containers da aplicacao em uma instancia controlada. Essa abordagem preserva a organizacao local em containers e reduz a quantidade de mudancas necessarias para uma primeira validacao em AWS.
+A EC2 executa os containers da aplicação em uma subnet privada de aplicação. Ela não recebe tráfego direto da internet. O acesso externo deve chegar pela camada de borda e pelo Application Load Balancer.
 
-## Containers esperados
+Essa abordagem mantém a simplicidade do Docker usado localmente e melhora o isolamento de rede da aplicação.
+
+## Posicionamento de Rede
+
+- Subnet privada de aplicação: `10.0.11.0/24` no MVP.
+- Subnet privada de aplicação secundária: `10.0.12.0/24` para expansão futura.
+- Entrada permitida apenas a partir do Security Group do ALB.
+- Saída para internet, quando necessária, via NAT Gateway.
+
+## Containers Esperados
 
 Na AWS, a EC2 deve executar:
 
-- `frontend`: interface web servida por Nginx.
-- `backend`: API FastAPI.
+- `frontend-container`: interface web servida por Nginx.
+- `backend-api-container`: API FastAPI.
 
-O container `database` nao deve ser usado na arquitetura AWS final, pois o banco local em Docker deve ser substituido por Amazon RDS for MariaDB.
+O container `database` não deve ser usado na arquitetura AWS final. O banco local em Docker deve ser substituído por Amazon RDS for MariaDB.
 
-## Variaveis de ambiente para RDS
+## Variáveis de Ambiente Para RDS
 
-O backend deve receber as variaveis necessarias para conectar ao RDS:
+O backend deve receber as variáveis necessárias para conectar ao RDS:
 
 ```text
 DB_HOST=<endpoint-privado-do-rds>
 DB_PORT=3306
 DB_NAME=<nome-do-banco>
 DB_USER=<usuario-da-aplicacao>
-DB_PASSWORD=<senha-gerenciada-fora-do-git>
+DB_PASSWORD=<segredo-gerenciado-fora-do-git>
 ```
 
-Esses valores nao devem ser versionados. Em evolucao, `DB_PASSWORD` deve ser recuperada por mecanismo seguro, como AWS Secrets Manager.
+Esses valores não devem ser versionados. Em evolução, `DB_PASSWORD` deve ser recuperada de forma segura, por exemplo pelo AWS Secrets Manager.
+
+## Entrada Pelo ALB
+
+O ALB fica em subnets públicas e encaminha tráfego para a EC2 privada. Regras recomendadas:
+
+- `SG-ALB` recebe HTTPS `443` da camada de borda.
+- `SG-EC2-APP` recebe `80` ou `8080` somente do `SG-ALB`.
+- A EC2 não expõe portas diretamente para `0.0.0.0/0`.
+
+## Saída Via NAT Gateway
+
+A EC2 privada pode precisar acessar a internet para atualizações ou downloads. Essa saída deve ocorrer por NAT Gateway. No MVP, um NAT Gateway pode reduzir custo e complexidade; em alta disponibilidade, recomenda-se NAT Gateway por zona.
+
+## Acesso Administrativo
+
+SSH deve permanecer bloqueado ou fortemente restrito. A opção recomendada para evolução é AWS Systems Manager Session Manager, com IAM Role apropriada e trilha de auditoria.
 
 ## IAM Role
 
-A instancia EC2 deve usar IAM Role. Isso evita access keys fixas na instancia e permite conceder permissoes minimas para CloudWatch Logs, SSM Session Manager e leitura de segredos especificos em fases futuras.
+A instância EC2 deve usar IAM Role. Não devem ser usadas access keys dentro da instância, no `.env`, no repositório ou em imagens Docker.
 
-## Portas
+Permissões futuras possíveis:
 
-| Porta | Uso | Observacao |
-| --- | --- | --- |
-| `80` | HTTP publico | Apenas se liberado formalmente |
-| `443` | HTTPS publico | Obrigatorio antes de publicacao real |
-| `8080` | Frontend local | Referencia de desenvolvimento |
-| `8000` | Backend local | Referencia de desenvolvimento |
-| `3306` | MariaDB | Somente EC2 -> RDS via Security Group |
-| `22` | SSH | Usar apenas se necessario e restrito por IP |
+- envio de logs para CloudWatch Logs;
+- leitura de segredos específicos no Secrets Manager;
+- acesso administrativo via SSM Session Manager.
 
-## Execucao Docker conceitual
+## Execução Docker Conceitual
 
-Os comandos abaixo sao conceituais e devem ser adaptados ao processo de deploy aprovado. Eles nao contem credenciais reais.
+Os comandos abaixo são apenas referência operacional. Eles não devem conter credenciais reais.
 
 ```bash
 docker build -t mercantis-frontend ./frontend
@@ -54,25 +74,26 @@ docker build -t mercantis-backend ./backend
 
 docker network create mercantis-network
 
-docker run -d --name mercantis-backend \
+docker run -d --name backend-api-container \
   --network mercantis-network \
   -e DB_HOST="<endpoint-privado-do-rds>" \
   -e DB_PORT="3306" \
   -e DB_NAME="<nome-do-banco>" \
   -e DB_USER="<usuario-da-aplicacao>" \
-  -e DB_PASSWORD="<senha-fora-do-repositorio>" \
+  -e DB_PASSWORD="<segredo-fora-do-repositorio>" \
   mercantis-backend
 
-docker run -d --name mercantis-frontend \
+docker run -d --name frontend-container \
   --network mercantis-network \
   -p 80:80 \
   mercantis-frontend
 ```
 
-## Cuidados operacionais
+## Cuidados Operacionais
 
-- Nao gravar credenciais em Dockerfile, imagem ou repositorio.
-- Nao usar `.env` com valores reais versionados.
-- Aplicar atualizacoes de seguranca no sistema operacional da EC2.
-- Enviar logs para CloudWatch em evolucao operacional.
-- Documentar a versao da imagem usada para permitir rollback.
+- Não gravar credenciais em Dockerfile, imagem ou repositório.
+- Não versionar `.env`.
+- Não usar banco em container na AWS final.
+- Atualizar sistema operacional e Docker da EC2.
+- Enviar logs para CloudWatch em evolução operacional.
+- Versionar imagens para permitir rollback.

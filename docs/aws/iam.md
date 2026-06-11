@@ -4,38 +4,38 @@ Este documento descreve o papel do AWS Identity and Access Management no Mercant
 
 ## Papel do IAM
 
-IAM controla identidades, permissoes e acesso a recursos AWS. No projeto, o uso correto de IAM reduz risco de credenciais fixas e permite aplicar o principio do menor privilegio.
+IAM controla identidades, permissões e acesso a recursos AWS. No projeto, o uso correto de IAM reduz risco de credenciais fixas e permite aplicar o princípio do menor privilégio.
 
-## Usuario IAM e IAM Role
+## Usuário IAM e IAM Role
 
-Um usuario IAM representa uma identidade humana ou tecnica com credenciais de longo prazo, quando necessario. Uma IAM Role e uma identidade assumida temporariamente por um servico, como EC2.
+Um usuário IAM representa uma identidade humana ou técnica com credenciais de longo prazo, quando necessário. Uma IAM Role é uma identidade assumida temporariamente por um serviço, como EC2.
 
-Para a aplicacao, a recomendacao e usar IAM Role associada a EC2, evitando access keys fixas em arquivos, variaveis ou scripts.
+Para a aplicação, a recomendação é usar IAM Role associada à EC2 privada, evitando access keys fixas em arquivos, variáveis ou scripts.
 
-## IAM Role para EC2
+## IAM Role Para EC2
 
-A EC2 deve receber uma role com permissoes minimas. Exemplos de permissoes futuras:
+A EC2 deve receber uma role com permissões mínimas. Exemplos de permissões futuras:
 
 - envio de logs para CloudWatch Logs;
-- leitura de segredos especificos no Secrets Manager;
+- leitura de segredos específicos no Secrets Manager;
 - uso de SSM Session Manager para acesso administrativo;
-- leitura de parametros especificos, se Parameter Store for adotado.
+- leitura de parâmetros específicos, se Parameter Store for adotado.
 
-## Permissoes minimas
+## Permissões Mínimas
 
-A role nao deve receber permissoes administrativas amplas. Cada permissao deve ter objetivo claro, escopo limitado e, quando possivel, restricao por recurso.
+A role não deve receber permissões administrativas amplas. Cada permissão deve ter objetivo claro, escopo limitado e, quando possível, restrição por recurso.
 
 ## Credenciais AWS
 
-- Nao colocar access key em `.env`.
-- Nao versionar credenciais no GitHub.
-- Nao gravar credenciais em Dockerfile.
-- Nao embutir credenciais em imagens Docker.
+- Não colocar access key em `.env`.
+- Não versionar credenciais no GitHub.
+- Não gravar credenciais em Dockerfile.
+- Não embutir credenciais em imagens Docker.
 - Preferir IAM Role para workloads em AWS.
 
-## Evolucoes recomendadas
+## Evoluções Recomendadas
 
-- Role EC2 com permissoes de CloudWatch Logs.
-- Permissao read-only para segredos especificos no Secrets Manager.
+- Role EC2 com permissões de CloudWatch Logs.
+- Permissão read-only para segredos específicos no Secrets Manager.
 - SSM Session Manager para reduzir necessidade de SSH.
-- Revisao periodica de politicas IAM.
+- Revisão periódica de políticas IAM.

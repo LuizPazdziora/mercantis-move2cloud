@@ -1,61 +1,75 @@
 # Amazon RDS for MariaDB
 
-Este documento descreve o uso de Amazon RDS for MariaDB na arquitetura AWS de referencia do Mercantis Move2Cloud.
+Este documento descreve o uso de Amazon RDS for MariaDB na arquitetura AWS de referência do Mercantis Move2Cloud.
 
-## Uso previsto
+## Uso Previsto
 
-O RDS substitui o MariaDB local em container. A aplicacao continua usando MariaDB como banco relacional, mas delega operacoes de infraestrutura para um servico gerenciado da AWS.
+O RDS substitui o MariaDB local em container. A aplicação continua usando MariaDB como banco relacional, mas o banco passa a ser gerenciado pela AWS e posicionado em subnets privadas de banco.
 
 ## Justificativa
 
-- Mantem compatibilidade com o banco usado localmente.
-- Reduz responsabilidade operacional sobre backups, armazenamento e manutencao.
-- Permite isolamento em subnet privada.
-- Facilita monitoramento com metricas integradas.
+- Mantém compatibilidade com o banco usado localmente.
+- Reduz responsabilidade operacional sobre backup, armazenamento e manutenção.
+- Permite isolamento em subnets privadas.
+- Evita exposição direta do banco à internet.
+- Facilita monitoramento com métricas integradas.
 
-## Posicionamento de rede
+## Posicionamento de Rede
 
-O RDS deve ficar em subnets privadas, com `Public accessibility` desabilitado. O acesso deve ser permitido apenas a partir do Security Group da EC2, na porta `3306`.
+O RDS deve ficar nas subnets privadas de banco:
+
+- `10.0.21.0/24`
+- `10.0.22.0/24`
+
+Essas subnets compõem o DB Subnet Group. Mesmo que o MVP comece simples, usar subnets em mais de uma zona prepara a evolução para Multi-AZ.
+
+## Acesso Público
+
+`Public accessibility` deve permanecer desativado. O RDS não deve ter IP público e não deve receber conexão direta da internet.
+
+Regra esperada:
 
 ```text
-EC2 / SG-EC2 -> 3306 -> RDS MariaDB / SG-RDS
+SG-EC2-APP -> TCP 3306 -> SG-RDS
 ```
 
-Nao deve existir regra permitindo acesso ao RDS a partir de `0.0.0.0/0`.
+Não deve existir regra permitindo `3306` a partir de `0.0.0.0/0`.
 
-## Backup e protecao
+## Backups e Proteção
 
-- Habilitar backup automatico do RDS.
-- Definir janela de backup compatibilidade com a operacao.
-- Criar snapshot manual antes de mudancas criticas.
+- Habilitar backup automático do RDS.
+- Definir janela de retenção conforme necessidade operacional.
+- Criar snapshot manual antes de mudanças críticas.
 - Avaliar criptografia em repouso com KMS.
-- Avaliar Multi-AZ como evolucao recomendada para maior resiliencia.
+- Avaliar Multi-AZ como evolução futura.
 
-## Cuidados com senha
+## Cuidados Com Senhas
 
-Senhas nao devem ser gravadas no GitHub, em Dockerfile ou em imagens Docker. No MVP local, `.env` e usado apenas localmente e nao deve ser versionado. Em AWS, a evolucao recomendada e armazenar a senha no AWS Secrets Manager e conceder leitura apenas a role da aplicacao.
+Senhas não devem ser gravadas no GitHub, em Dockerfile, em imagens Docker ou em comandos de execução. No ambiente local, `.env` é usado apenas para desenvolvimento e não deve ser versionado. Em AWS, a evolução recomendada é Secrets Manager com leitura restrita à IAM Role da aplicação.
 
-## MariaDB local e RDS MariaDB
+## MariaDB Local e RDS MariaDB
 
 | Aspecto | Local | AWS |
 | --- | --- | --- |
-| Execucao | Container `database` | Amazon RDS for MariaDB |
-| Porta interna | `database:3306` | Endpoint privado do RDS em `3306` |
-| Dados demonstrativos | `seed.sql` | Nao usar dados ficticios em producao |
-| Administracao | Docker Compose | Console/API AWS e politicas operacionais |
-| Backup | Volume local | Backup automatico e snapshots |
+| Execução | Container `database` | Amazon RDS for MariaDB |
+| Host | `database` na rede Docker | Endpoint privado do RDS |
+| Porta | `3306` interna e `3307` no host local | `3306` privada |
+| Dados demonstrativos | `seed.sql` | Não usar dados fictícios em produção |
+| Backup | Volume Docker local | Backup automático e snapshots |
+| Segurança | Rede Docker local | Subnet privada e Security Group |
 
-## Migracao de schema
+## Migração de Schema
 
-- `database/init.sql` deve ser tratado como referencia inicial de schema.
-- `database/seed.sql` deve ser usado apenas para dados demonstrativos.
-- Dados ficticios nao devem ser aplicados em producao.
-- Mudancas futuras devem evoluir para estrategia controlada de migracao, com versionamento de scripts e plano de rollback.
+- `database/init.sql` é referência inicial de schema.
+- `database/seed.sql` é apenas para dados demonstrativos.
+- Dados fictícios não devem ser aplicados em produção.
+- Mudanças futuras devem evoluir para estratégia controlada de migração, com scripts versionados e plano de rollback.
 
-## Validacao esperada
+## Validação Esperada
 
-- Endpoint privado do RDS acessivel pela EC2.
-- Porta `3306` bloqueada para a internet.
-- Backend responde `/db-health` com conexao valida.
-- Backups automaticos habilitados.
-- Configuracao documentada sem exposicao de credenciais.
+- RDS sem acesso público.
+- RDS em subnets privadas de banco.
+- Porta `3306` acessível apenas a partir do Security Group da aplicação.
+- Backend responde `/db-health` com conexão válida.
+- Backups automáticos habilitados ou planejados.
+- Credenciais fora do repositório.
