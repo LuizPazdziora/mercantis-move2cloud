@@ -5,22 +5,313 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mercantis Move2Cloud</title>
     <link rel="stylesheet" href="/src/styles.css" />
-    <script defer src="/src/main.js"></script>
+    <script defer src="/src/app.js"></script>
   </head>
   <body>
-    <main class="shell">
-      <section class="panel">
-        <p class="eyebrow">MVP Mercantis Move2Cloud</p>
-        <h1>Base web preparada para evolução em AWS</h1>
-        <p>
-          Interface inicial containerizada para validar integração local entre
-          frontend, backend FastAPI e MariaDB.
-        </p>
-        <div class="status-row">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span id="api-status">Verificando API...</span>
+    <div class="dashboard-shell">
+      <aside class="sidebar" aria-label="Navegação principal">
+        <div class="brand-block">
+          <span class="brand-mark" aria-hidden="true">M</span>
+          <div>
+            <strong>Mercantis</strong>
+            <span>Move2Cloud</span>
+          </div>
         </div>
-      </section>
-    </main>
+
+        <nav class="sidebar-nav">
+          <a href="#visao-geral" class="nav-link">Visão geral</a>
+          <a href="#produtos" class="nav-link">Produtos</a>
+          <a href="#pedidos" class="nav-link">Pedidos</a>
+          <a href="http://localhost:8000/docs" class="nav-link" target="_blank" rel="noreferrer">
+            Swagger
+          </a>
+        </nav>
+
+        <div class="environment-card">
+          <span class="environment-label">Ambiente</span>
+          <strong>Desenvolvimento Local</strong>
+          <small>Docker Compose</small>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="hero-section">
+          <div>
+            <p class="eyebrow">MVP técnico em containers</p>
+            <h1>Mercantis Move2Cloud</h1>
+            <p class="subtitle">
+              MVP de aplicação web containerizada preparada para evolução em arquitetura AWS.
+            </p>
+          </div>
+          <div class="hero-actions">
+            <a class="link-button" href="http://localhost:8000/docs" target="_blank" rel="noreferrer">
+              Abrir Swagger
+            </a>
+            <button class="primary-button" id="refresh-all-button" type="button">
+              Recarregar ambiente
+            </button>
+          </div>
+        </header>
+
+        <section class="status-grid" aria-label="Indicadores do MVP">
+          <article class="metric-card" id="api-card">
+            <div class="metric-icon metric-icon-blue" aria-hidden="true">API</div>
+            <div>
+              <span class="metric-label">Status da API</span>
+              <strong id="api-status">Carregando</strong>
+              <small id="api-detail">GET /health</small>
+            </div>
+          </article>
+
+          <article class="metric-card" id="db-card">
+            <div class="metric-icon metric-icon-sky" aria-hidden="true">DB</div>
+            <div>
+              <span class="metric-label">Status do banco</span>
+              <strong id="db-status">Carregando</strong>
+              <small id="db-detail">GET /db-health</small>
+            </div>
+          </article>
+
+          <article class="metric-card">
+            <div class="metric-icon metric-icon-green" aria-hidden="true">PR</div>
+            <div>
+              <span class="metric-label">Total de produtos</span>
+              <strong id="products-count">0</strong>
+              <small>Catálogo do MVP</small>
+            </div>
+          </article>
+
+          <article class="metric-card">
+            <div class="metric-icon metric-icon-amber" aria-hidden="true">PD</div>
+            <div>
+              <span class="metric-label">Total de pedidos</span>
+              <strong id="orders-count">0</strong>
+              <small>Pedidos simulados</small>
+            </div>
+          </article>
+
+          <article class="metric-card">
+            <div class="metric-icon metric-icon-blue" aria-hidden="true">R$</div>
+            <div>
+              <span class="metric-label">Valor em pedidos</span>
+              <strong id="orders-total">R$ 0,00</strong>
+              <small>Soma de total_value</small>
+            </div>
+          </article>
+
+          <article class="metric-card">
+            <div class="metric-icon metric-icon-slate" aria-hidden="true">ET</div>
+            <div>
+              <span class="metric-label">Estoque total</span>
+              <strong id="stock-total">0</strong>
+              <small>Soma de stock_quantity</small>
+            </div>
+          </article>
+        </section>
+
+        <section class="overview-panel" id="visao-geral" aria-labelledby="overview-title">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Arquitetura local</p>
+              <h2 id="overview-title">Visão Geral do MVP</h2>
+            </div>
+            <span class="status-badge status-badge-neutral">Sem recursos AWS reais</span>
+          </div>
+
+          <div class="architecture-flow" aria-label="Fluxo técnico local">
+            <div class="flow-node">
+              <span class="node-icon">FE</span>
+              <strong>Frontend</strong>
+              <small>localhost:8080</small>
+            </div>
+            <span class="flow-arrow" aria-hidden="true">→</span>
+            <div class="flow-node">
+              <span class="node-icon">API</span>
+              <strong>Backend FastAPI</strong>
+              <small>localhost:8000</small>
+            </div>
+            <span class="flow-arrow" aria-hidden="true">→</span>
+            <div class="flow-node">
+              <span class="node-icon">DB</span>
+              <strong>MariaDB</strong>
+              <small>local 3307 / interno 3306</small>
+            </div>
+          </div>
+        </section>
+
+        <div class="workspace-grid">
+          <section class="workspace-panel" id="produtos" aria-labelledby="products-title">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Operação comercial</p>
+                <h2 id="products-title">Produtos</h2>
+              </div>
+              <button class="secondary-button" id="reload-products-button" type="button">
+                Recarregar produtos
+              </button>
+            </div>
+
+            <div class="toolbar" aria-label="Filtros de produtos">
+              <label class="field">
+                <span>Buscar produto</span>
+                <input id="product-search" type="search" placeholder="Nome ou categoria" />
+              </label>
+              <label class="field">
+                <span>Status</span>
+                <select id="product-status-filter">
+                  <option value="all">Todos</option>
+                  <option value="active">Ativos</option>
+                  <option value="inactive">Inativos</option>
+                </select>
+              </label>
+            </div>
+
+            <form class="form-card" id="product-form">
+              <div class="form-title">
+                <strong>Cadastrar produto</strong>
+                <span>Dados fictícios para validação local</span>
+              </div>
+              <div class="form-grid">
+                <label class="field">
+                  <span>Nome</span>
+                  <input id="product-name" name="name" required maxlength="120" />
+                </label>
+                <label class="field">
+                  <span>Categoria</span>
+                  <input id="product-category" name="category" required maxlength="80" />
+                </label>
+                <label class="field">
+                  <span>Preço</span>
+                  <input
+                    id="product-price"
+                    name="price"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    required
+                  />
+                </label>
+                <label class="field">
+                  <span>Quantidade em estoque</span>
+                  <input
+                    id="product-stock"
+                    name="stock_quantity"
+                    type="number"
+                    min="0"
+                    step="1"
+                    required
+                  />
+                </label>
+                <label class="toggle-row">
+                  <input id="product-active" name="is_active" type="checkbox" checked />
+                  <span>Produto ativo</span>
+                </label>
+                <button class="primary-button" id="product-submit-button" type="submit">
+                  Cadastrar produto
+                </button>
+              </div>
+            </form>
+
+            <div class="loading-row" id="products-loading" hidden>Carregando produtos...</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Categoria</th>
+                    <th>Preço</th>
+                    <th>Estoque</th>
+                    <th>Status</th>
+                    <th>Criação</th>
+                  </tr>
+                </thead>
+                <tbody id="products-table">
+                  <tr>
+                    <td colspan="6">Carregando produtos...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="workspace-panel" id="pedidos" aria-labelledby="orders-title">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Pedidos simulados</p>
+                <h2 id="orders-title">Pedidos</h2>
+              </div>
+              <button class="secondary-button" id="reload-orders-button" type="button">
+                Recarregar pedidos
+              </button>
+            </div>
+
+            <form class="form-card" id="order-form">
+              <div class="form-title">
+                <strong>Cadastrar pedido</strong>
+                <span>Checkout simulado, sem pagamento real</span>
+              </div>
+              <div class="form-grid">
+                <label class="field">
+                  <span>Nome do cliente</span>
+                  <input id="order-customer" name="customer_name" required maxlength="120" />
+                </label>
+                <label class="field">
+                  <span>Produto</span>
+                  <select id="order-product" name="product_id" required>
+                    <option value="">Carregando produtos...</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Quantidade</span>
+                  <input
+                    id="order-quantity"
+                    name="quantity"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value="1"
+                    required
+                  />
+                </label>
+                <label class="field">
+                  <span>Status</span>
+                  <input id="order-status" name="status" value="created" required maxlength="40" />
+                </label>
+              </div>
+              <div class="order-preview">
+                <span>Total estimado</span>
+                <strong id="order-total-preview">R$ 0,00</strong>
+              </div>
+              <button class="primary-button full-button" id="order-submit-button" type="submit">
+                Cadastrar pedido
+              </button>
+            </form>
+
+            <div class="loading-row" id="orders-loading" hidden>Carregando pedidos...</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Product ID</th>
+                    <th>Quantidade</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Criação</th>
+                  </tr>
+                </thead>
+                <tbody id="orders-table">
+                  <tr>
+                    <td colspan="6">Carregando pedidos...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
   </body>
 </html>

@@ -1,79 +1,200 @@
 # Mercantis Move2Cloud
 
-O Mercantis Move2Cloud é um MVP de aplicação web voltado a arquitetura AWS, segurança, documentação técnica e demonstração funcional mínima. A estratégia arquitetural definida é replatform com refactor parcial: a aplicação passa a ser preparada em containers e o banco de dados de produção é planejado como Amazon RDS for MariaDB em subnet privada.
+O Mercantis Move2Cloud é um MVP de aplicação web containerizada para validar uma base técnica de migração para AWS. O projeto usa a estratégia de replatform com refactor parcial: a aplicação é organizada em containers e o banco de produção é planejado como Amazon RDS for MariaDB em subnet privada.
 
-Esta etapa mantém o escopo simples e funcional: backend FastAPI com conexão ao MariaDB local, frontend containerizado já preparado na estrutura do projeto e documentação técnica para evolução futura.
+O ambiente atual é local, executado com Docker Compose, e não cria recursos reais na AWS.
 
-## Arquitetura geral
+## Status atual do MVP
 
-O ambiente local é composto por três serviços em Docker Compose:
+- Frontend funcional em `http://localhost:8080`.
+- Backend FastAPI em `http://localhost:8000`.
+- Swagger em `http://localhost:8000/docs`.
+- MariaDB em container Docker.
+- MariaDB interno em `3306`.
+- MariaDB publicado localmente em `127.0.0.1:3307`.
+- Fluxo validado: `Frontend -> Backend FastAPI -> MariaDB`.
 
-- `frontend`: interface web simples e containerizada.
-- `backend`: API em Python com FastAPI, SQLAlchemy e PyMySQL.
-- `database`: MariaDB local para desenvolvimento.
-
-Fluxo local:
+## Arquitetura local
 
 ```text
-Navegador -> frontend -> backend FastAPI -> MariaDB
+Navegador
+-> frontend / Nginx / porta 8080
+-> backend / FastAPI / porta 8000
+-> database / MariaDB / database:3306
 ```
 
-Para AWS, a referência futura mantém o banco em Amazon RDS for MariaDB privado, com acesso permitido somente pela camada de backend. Nenhuma implantação pública deve ser mantida sem validação, revisão de segurança e liberação explícita.
+O frontend não acessa o banco diretamente. A comunicação com o MariaDB é feita somente pelo backend usando o host interno `database` e a porta `3306`.
 
-## Como executar localmente
+## Tecnologias
 
-Pré-requisitos:
+- HTML, CSS e JavaScript puro no frontend.
+- Nginx para servir o frontend.
+- Python com FastAPI no backend.
+- SQLAlchemy e PyMySQL para acesso ao banco.
+- Pydantic para validação de entrada e saída.
+- MariaDB como banco local.
+- Docker Compose para orquestração local.
 
-- Docker
-- Docker Compose
+## Estrutura de pastas
 
-Comandos:
+```text
+backend/
+frontend/
+database/
+docs/
+infra/
+docker-compose.yml
+.env.example
+codex-instructions.md
+README.md
+```
+
+## Configurar variáveis de ambiente
+
+Antes de executar o Docker Compose, crie o arquivo `.env` local a partir do exemplo versionado.
+
+Windows PowerShell:
 
 ```powershell
-cd "C:\Users\lfpaz\OneDrive\Documentos\New project\mercantis-move2cloud"
-Copy-Item .env.example .env
-docker compose up --build
+copy .env.example .env
 ```
 
-Após a subida dos containers:
+Alternativa multiplataforma:
+
+```bash
+cp .env.example .env
+```
+
+O arquivo `.env` é necessário apenas localmente, não deve ser versionado e não deve conter credenciais reais de produção.
+
+## Subir o ambiente
+
+```powershell
+docker compose up -d --build
+```
+
+Verificar containers:
+
+```powershell
+docker compose ps
+```
+
+Resultado esperado:
+
+- `mercantis-frontend` em execução.
+- `mercantis-backend` em execução.
+- `mercantis-database` em execução e `healthy`.
+
+## URLs locais
 
 - Frontend: `http://localhost:8080`
-- Backend: `http://localhost:8000`
-- Health check: `http://localhost:8000/health`
-- Health check do banco: `http://localhost:8000/db-health`
-- Swagger da API: `http://localhost:8000/docs`
+- Backend Swagger: `http://localhost:8000/docs`
+- API Health: `http://localhost:8000/health`
+- DB Health: `http://localhost:8000/db-health`
 - Produtos: `http://localhost:8000/products`
 - Pedidos: `http://localhost:8000/orders`
 
-O arquivo `.env` criado localmente não deve ser versionado. Use apenas valores locais de desenvolvimento e nunca credenciais reais.
+## Validação rápida
 
-## Estrutura principal
+```powershell
+Invoke-RestMethod http://localhost:8000/health
+Invoke-RestMethod http://localhost:8000/db-health
+Invoke-RestMethod http://localhost:8000/products
+Invoke-RestMethod http://localhost:8000/orders
+```
 
-- `backend/`: API FastAPI com CRUD mínimo de produtos e pedidos.
-- `frontend/`: frontend inicial containerizado.
-- `database/`: scripts SQL iniciais.
-- `docs/`: documentação técnica em português.
-- `infra/aws-reference/`: referências de arquitetura AWS para evolução.
-- `docker-compose.yml`: orquestração local.
-- `.env.example`: exemplo de variáveis de ambiente sem secrets reais.
-- `codex-instructions.md`: decisões técnicas para orientar próximas tarefas.
+Valide também no navegador:
+
+- `http://localhost:8080`
+- `http://localhost:8000/docs`
+
+## Porta 3307 do MariaDB
+
+O MariaDB usa duas portas com finalidades diferentes:
+
+- `3306`: porta interna do container, usada pelo backend como `database:3306`.
+- `3307`: porta publicada no host local para ferramentas como DBeaver, MySQL Workbench ou terminal.
+
+Essa separação evita conflito com instalações locais de MySQL, MariaDB, XAMPP ou WAMP que costumam ocupar a porta `3306`.
+
+## Volume MariaDB
+
+Os scripts `database/init.sql` e `database/seed.sql` são executados automaticamente apenas quando o volume do banco é criado pela primeira vez. Se o volume já existir, alterações nesses scripts podem não ser reaplicadas.
+
+Use `docker compose down -v` somente quando for aceitável apagar todos os dados locais e recriar o banco do zero. Em validações normais, prefira:
+
+```powershell
+docker compose down
+```
+
+## CORS
+
+O backend permite por padrão a origem local:
+
+```text
+http://localhost:8080
+```
+
+Em uma implantação futura na AWS, as origens CORS devem ser restritas aos domínios autorizados.
+
+## Arquitetura AWS de Referência
+
+A arquitetura AWS de referência foi documentada para orientar uma implantação futura simples, segura e controlada. Nenhum recurso real foi criado na AWS nesta etapa, a aplicação não foi publicada online e não foram geradas credenciais reais.
+
+A estratégia permanece como replatform com refactor parcial:
+
+- frontend e backend continuam containerizados;
+- a EC2 é usada como host Docker no MVP AWS;
+- o MariaDB local é substituído por Amazon RDS for MariaDB;
+- o RDS fica em subnet privada;
+- Security Groups segmentam acesso entre internet, EC2 e banco;
+- Secrets Manager e CloudWatch são recomendações de evolução.
+
+Documentos principais:
+
+- [Arquitetura AWS](docs/aws/arquitetura-aws.md)
+- [Rede e VPC](docs/aws/rede-vpc.md)
+- [EC2 com Docker](docs/aws/ec2-docker.md)
+- [RDS MariaDB](docs/aws/rds-mariadb.md)
+- [Segurança AWS](docs/aws/seguranca.md)
+- [IAM](docs/aws/iam.md)
+- [Observabilidade](docs/aws/observabilidade.md)
+- [Backup e rollback](docs/aws/backup-rollback.md)
+- [Plano de implantação AWS](docs/aws/plano-de-implantacao-aws.md)
+- [Checklist AWS](docs/aws/checklist-aws.md)
+- [Diagrama AWS de referência](docs/arquitetura/diagrama-aws-referencia.md)
 
 ## Documentação
 
 - [Backend](backend/README.md)
-- [Documentação técnica](docs/documentacao-tecnica.md)
+- [Frontend](frontend/README.md)
+- [Validação local](docs/validacao-local.md)
+- [Checklist final do MVP](docs/checklist-mvp.md)
 - [Decisões arquiteturais](docs/arquitetura/decisoes-arquiteturais.md)
-- [Diagrama do MVP](docs/arquitetura/diagrama-mvp.md)
-- [Diagrama de referência final](docs/arquitetura/diagrama-final.md)
+- [Documentação técnica](docs/documentacao-tecnica.md)
+- [Arquitetura AWS](docs/aws/arquitetura-aws.md)
+- [Rede e VPC](docs/aws/rede-vpc.md)
+- [EC2 com Docker](docs/aws/ec2-docker.md)
+- [RDS MariaDB](docs/aws/rds-mariadb.md)
+- [IAM](docs/aws/iam.md)
+- [Observabilidade](docs/aws/observabilidade.md)
+- [Backup e rollback](docs/aws/backup-rollback.md)
 - [Plano de implantação AWS](docs/aws/plano-de-implantacao-aws.md)
-- [Segurança](docs/aws/seguranca.md)
-- [Validação](docs/aws/validacao.md)
+- [Segurança AWS](docs/aws/seguranca.md)
+- [Checklist AWS](docs/aws/checklist-aws.md)
 
-## Restrições
+## Restrições atuais
 
+- Não criar recursos reais na AWS.
+- Não publicar a aplicação online sem liberação explícita.
 - Não versionar `.env`.
-- Não criar credenciais reais no repositório.
-- Não usar dados reais de clientes no MVP.
-- Não implementar autenticação, pagamento real, logística, antifraude ou estoque real nesta etapa.
-- Não criar recursos reais na AWS nesta etapa.
-- Não publicar ambiente AWS sem liberação explícita.
+- Não usar credenciais reais.
+- Não usar dados reais de clientes.
+- Não adicionar autenticação, pagamento, logística, antifraude ou integrações externas nesta etapa.
+
+## Próximos passos planejados
+
+- Detalhar arquitetura AWS de referência com VPC, subnets e Security Groups.
+- Planejar Amazon RDS for MariaDB em subnet privada.
+- Definir estratégia de secrets para AWS.
+- Documentar observabilidade, backup, validação de segurança e plano de desativação de recursos temporários.

@@ -19,6 +19,7 @@ def build_database_url() -> str | URL:
         host=os.getenv("DB_HOST", "database"),
         port=int(os.getenv("DB_PORT", "3306")),
         database=os.getenv("DB_NAME", "mercantis"),
+        query={"charset": "utf8mb4"},
     )
 
 
@@ -27,7 +28,7 @@ engine = create_engine(
     build_database_url(),
     pool_pre_ping=True,
     pool_recycle=300,
-    connect_args={"connect_timeout": 5},
+    connect_args={"connect_timeout": 5, "charset": "utf8mb4"},
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

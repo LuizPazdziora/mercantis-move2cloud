@@ -4,7 +4,8 @@ services:
       context: ./frontend
     container_name: mercantis-frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_started
     ports:
       - "${FRONTEND_PORT:-8080}:80"
     networks:
@@ -16,7 +17,7 @@ services:
     container_name: mercantis-backend
     environment:
       DB_HOST: database
-      DB_PORT: 3306
+      DB_PORT: ${DB_PORT:-3306}
       DB_NAME: ${DB_NAME:?Defina DB_NAME}
       DB_USER: ${DB_USER:?Defina DB_USER}
       DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD}
@@ -33,13 +34,17 @@ services:
     image: mariadb:11.4
     container_name: mercantis-database
     restart: unless-stopped
+    command:
+      - mariadbd
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
     environment:
       MARIADB_DATABASE: ${DB_NAME:?Defina DB_NAME}
       MARIADB_USER: ${DB_USER:?Defina DB_USER}
       MARIADB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD}
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Defina DB_ROOT_PASSWORD}
     ports:
-      - "127.0.0.1:${DB_PORT:-3306}:3306"
+      - "127.0.0.1:${DB_PORT_LOCAL:-3307}:3306"
     volumes:
       - mercantis-db-data:/var/lib/mysql
       - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro

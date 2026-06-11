@@ -1,3 +1,5 @@
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 INSERT INTO products (id, name, category, price, stock_quantity, is_active)
 VALUES
   (1, 'Notebook Mercantis Pro', 'Informática', 5199.90, 8, TRUE),
