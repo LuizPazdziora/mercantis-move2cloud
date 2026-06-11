@@ -7,8 +7,8 @@ from app.routes import health, orders, products
 
 app = FastAPI(
     title="Mercantis Move2Cloud API",
-    version="0.1.0",
-    description="API inicial do MVP Mercantis Move2Cloud.",
+    version="0.2.0",
+    description="API funcional mínima do MVP Mercantis Move2Cloud.",
 )
 
 allowed_origins = [
@@ -33,6 +33,6 @@ app.include_router(orders.router)
 @app.get("/", tags=["root"])
 def root() -> dict[str, str]:
     return {
-        "service": "mercantis-move2cloud-backend",
+        "service": "mercantis-backend",
         "status": "ok",
     }

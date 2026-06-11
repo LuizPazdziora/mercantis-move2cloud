@@ -2,14 +2,14 @@
 
 O Mercantis Move2Cloud é um MVP de aplicação web voltado a arquitetura AWS, segurança, documentação técnica e demonstração funcional mínima. A estratégia arquitetural definida é replatform com refactor parcial: a aplicação passa a ser preparada em containers e o banco de dados de produção é planejado como Amazon RDS for MariaDB em subnet privada.
 
-Esta etapa cria apenas a estrutura inicial do projeto. O objetivo é permitir evolução segura nas próximas tarefas, sem implementar todos os fluxos de negócio e sem publicar ambiente online.
+Esta etapa mantém o escopo simples e funcional: backend FastAPI com conexão ao MariaDB local, frontend containerizado já preparado na estrutura do projeto e documentação técnica para evolução futura.
 
 ## Arquitetura geral
 
 O ambiente local é composto por três serviços em Docker Compose:
 
 - `frontend`: interface web simples e containerizada.
-- `backend`: API em Python com FastAPI.
+- `backend`: API em Python com FastAPI, SQLAlchemy e PyMySQL.
 - `database`: MariaDB local para desenvolvimento.
 
 Fluxo local:
@@ -40,12 +40,16 @@ Após a subida dos containers:
 - Frontend: `http://localhost:8080`
 - Backend: `http://localhost:8000`
 - Health check: `http://localhost:8000/health`
+- Health check do banco: `http://localhost:8000/db-health`
+- Swagger da API: `http://localhost:8000/docs`
+- Produtos: `http://localhost:8000/products`
+- Pedidos: `http://localhost:8000/orders`
 
 O arquivo `.env` criado localmente não deve ser versionado. Use apenas valores locais de desenvolvimento e nunca credenciais reais.
 
 ## Estrutura principal
 
-- `backend/`: API FastAPI.
+- `backend/`: API FastAPI com CRUD mínimo de produtos e pedidos.
 - `frontend/`: frontend inicial containerizado.
 - `database/`: scripts SQL iniciais.
 - `docs/`: documentação técnica em português.
@@ -56,6 +60,7 @@ O arquivo `.env` criado localmente não deve ser versionado. Use apenas valores 
 
 ## Documentação
 
+- [Backend](backend/README.md)
 - [Documentação técnica](docs/documentacao-tecnica.md)
 - [Decisões arquiteturais](docs/arquitetura/decisoes-arquiteturais.md)
 - [Diagrama do MVP](docs/arquitetura/diagrama-mvp.md)
@@ -69,5 +74,6 @@ O arquivo `.env` criado localmente não deve ser versionado. Use apenas valores 
 - Não versionar `.env`.
 - Não criar credenciais reais no repositório.
 - Não usar dados reais de clientes no MVP.
-- Não implementar pagamento real, logística, antifraude ou estoque real nesta etapa.
+- Não implementar autenticação, pagamento real, logística, antifraude ou estoque real nesta etapa.
+- Não criar recursos reais na AWS nesta etapa.
 - Não publicar ambiente AWS sem liberação explícita.

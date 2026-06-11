@@ -1,15 +1,25 @@
 CREATE TABLE IF NOT EXISTS products (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(120) NOT NULL,
-  description TEXT NULL,
+  category VARCHAR(80) NOT NULL,
   price DECIMAL(10, 2) NOT NULL,
-  active BOOLEAN NOT NULL DEFAULT TRUE,
+  stock_quantity INT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS orders (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  status VARCHAR(40) NOT NULL DEFAULT 'draft',
-  total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  customer_name VARCHAR(120) NOT NULL,
+  product_id INT NOT NULL,
+  quantity INT NOT NULL,
+  total_value DECIMAL(10, 2) NOT NULL,
+  status VARCHAR(40) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_orders_product_id (product_id),
+  CONSTRAINT fk_orders_products
+    FOREIGN KEY (product_id)
+    REFERENCES products(id)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT
 );

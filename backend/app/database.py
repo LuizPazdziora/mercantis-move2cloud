@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 
 def build_database_url() -> str | URL:
+    # A conexão usa variáveis de ambiente para evitar credenciais no código-fonte.
     database_url = os.getenv("DATABASE_URL")
     if database_url:
         return database_url
@@ -21,12 +22,19 @@ def build_database_url() -> str | URL:
     )
 
 
-engine = create_engine(build_database_url(), pool_pre_ping=True)
+# pool_pre_ping evita reutilizar conexões encerradas pelo MariaDB.
+engine = create_engine(
+    build_database_url(),
+    pool_pre_ping=True,
+    pool_recycle=300,
+    connect_args={"connect_timeout": 5},
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
 def get_db() -> Generator[Session, None, None]:
+    # Dependência usada pelos endpoints para abrir e fechar sessões por requisição.
     db = SessionLocal()
     try:
         yield db
