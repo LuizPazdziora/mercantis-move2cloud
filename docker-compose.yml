@@ -1,0 +1,60 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+    container_name: mercantis-frontend
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    networks:
+      - mercantis-network
+
+  backend:
+    build:
+      context: ./backend
+    container_name: mercantis-backend
+    environment:
+      DB_HOST: database
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:?Defina DB_NAME}
+      DB_USER: ${DB_USER:?Defina DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080}
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    networks:
+      - mercantis-network
+
+  database:
+    image: mariadb:11.4
+    container_name: mercantis-database
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:?Defina DB_NAME}
+      MARIADB_USER: ${DB_USER:?Defina DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Defina DB_ROOT_PASSWORD}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mercantis-db-data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h localhost -u$${MARIADB_USER} -p$${MARIADB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - mercantis-network
+
+networks:
+  mercantis-network:
+    driver: bridge
+
+volumes:
+  mercantis-db-data:

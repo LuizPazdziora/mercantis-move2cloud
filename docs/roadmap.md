@@ -1,38 +1,33 @@
-# Mercantis Move2Cloud — Roadmap
+# Mercantis Move2Cloud - Roadmap
 
-## Fase 1 — MVP acadêmico
+## Fase 1 - Estrutura inicial local
 
-- EC2 privada com Docker Compose.
-- `frontend-container` e `backend-api-container`.
-- Amazon RDS for MariaDB privado.
-- Application Load Balancer.
-- Amazon CloudFront, AWS WAF, AWS Shield Standard e ACM.
-- Amazon CloudWatch para logs e métricas essenciais.
-- Documentação, validação técnica e evidências.
+- Criar estrutura do backend FastAPI.
+- Criar frontend simples containerizado.
+- Configurar MariaDB local com Docker Compose.
+- Criar documentação técnica inicial.
+- Criar endpoint `/health`.
 
-## Fase 2 — Produção inicial
+## Fase 2 - MVP funcional mínimo
 
-- Migração de containers para ECS/Fargate.
-- Amazon ECR para versionamento de imagens Docker.
-- Amazon RDS for MariaDB Multi-AZ.
-- AWS Secrets Manager como padrão de credenciais.
-- CloudWatch com métricas, alarmes e dashboards.
-- Processo de deploy versionado e rollback.
+- Evoluir catálogo de produtos fictícios.
+- Criar fluxo simplificado de pedidos simulados.
+- Persistir dados de demonstração no MariaDB.
+- Adicionar testes automatizados essenciais.
+- Melhorar tratamento de erros e validações.
 
-## Fase 3 — Segurança e observabilidade avançadas
+## Fase 3 - Preparação AWS controlada
 
-- Amazon GuardDuty.
-- AWS Security Hub.
-- AWS Config.
-- Amazon OpenSearch Service.
-- AWS X-Ray.
-- VPC Flow Logs amadurecidos.
-- Dashboards executivos e técnicos.
+- Detalhar VPC, subnets e Security Groups.
+- Planejar Amazon RDS for MariaDB em subnet privada.
+- Definir entrada HTTPS controlada.
+- Validar logs, métricas e auditoria.
+- Documentar plano de desligamento de recursos temporários.
 
-## Fase 4 — Evolução da aplicação
+## Fase 4 - Operação assistida
 
-- CI/CD.
-- Testes automatizados.
-- Cache com Amazon ElastiCache.
-- Assets desacoplados em Amazon S3 com distribuição via CloudFront.
-- Melhorias de catálogo, carrinho, checkout e operação comercial.
+- Revisar segurança antes de qualquer exposição externa.
+- Definir processo de deploy e rollback.
+- Validar custos estimados.
+- Registrar evidências técnicas.
+- Formalizar critérios de liberação.

@@ -1,0 +1,9 @@
+{
+  "name": "mercantis-move2cloud-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Frontend inicial do MVP Mercantis Move2Cloud.",
+  "scripts": {
+    "lint": "echo \"Lint do frontend ainda não configurado\""
+  }
+}

@@ -1,22 +1,19 @@
-# Mercantis Move2Cloud — Checklist de Segurança Dia 1
+# Mercantis Move2Cloud - Checklist de Segurança
 
-Use este checklist antes de qualquer demonstração ou exposição temporária do MVP.
+Use este checklist antes de qualquer validação com exposição externa controlada.
 
 | Item | Status | Observação |
 |---|---|---|
-| MFA ativado para usuários AWS | Pendente | Exigir principalmente para contas administrativas. |
-| Root account sem access keys | Pendente | Conta root não deve ser usada na operação diária. |
-| HTTPS obrigatório | Pendente | HTTP deve redirecionar para HTTPS. |
-| AWS WAF ativado | Pendente | Associar à camada de borda prevista. |
-| AWS Shield Standard considerado | Pendente | Proteção básica disponível para serviços compatíveis. |
+| MFA ativado para usuários AWS administrativos | Pendente | Aplicar antes de operação em conta AWS. |
+| Conta root sem access keys | Pendente | Conta root não deve ser usada em operação diária. |
+| HTTPS obrigatório para tráfego público | Pendente | HTTP deve existir apenas para redirecionamento, se usado. |
 | RDS sem acesso público | Pendente | `Publicly accessible` deve permanecer desativado. |
-| Security Groups revisados | Pendente | Validar origem por Security Group, não por `0.0.0.0/0` em camadas privadas. |
-| Porta 22 fechada para internet | Pendente | Usar Systems Manager quando houver necessidade operacional. |
-| Credenciais no AWS Secrets Manager | Pendente | O padrão recomendado é AWS Secrets Manager para credenciais do Amazon RDS. O SSM Parameter Store pode ser usado para parâmetros não sensíveis ou configurações de menor criticidade. |
-| CloudTrail ativado | Pendente | Obrigatório na arquitetura final e recomendado desde a validação. |
-| CloudWatch Logs ativado | Pendente | Centralizar logs da aplicação e infraestrutura. |
-| VPC Flow Logs ativado na arquitetura final | Pendente | Apoia auditoria e diagnóstico de rede. |
-| S3 Block Public Access ativado | Pendente | Aplicar em buckets de evidências, logs, backups e artefatos. |
-| Backup automático do RDS habilitado | Pendente | Definir retenção compatível com RPO. |
-| Plano de rollback documentado | Pendente | Definir retorno para versão anterior da aplicação. |
-| Plano de descomissionamento definido | Pendente | Evitar custo e exposição após testes. |
+| Security Groups revisados | Pendente | Origem por camada, não por abertura ampla. |
+| Porta 22 fechada para internet | Pendente | Preferir acesso administrativo controlado. |
+| Credenciais fora do repositório | Pendente | Usar serviço seguro em AWS e `.env` apenas localmente. |
+| Logs básicos habilitados | Pendente | Registrar aplicação e infraestrutura conforme a etapa. |
+| Auditoria habilitada | Pendente | Registrar alterações relevantes em recursos AWS. |
+| S3 Block Public Access ativado | Pendente | Aplicar em buckets de evidências, logs e artefatos privados. |
+| Backup automático do RDS planejado | Pendente | Definir retenção conforme RPO. |
+| Plano de rollback documentado | Pendente | Definir retorno para versão anterior. |
+| Plano de desligamento definido | Pendente | Evitar custo e exposição após validação. |

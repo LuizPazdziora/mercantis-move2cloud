@@ -1,32 +1,73 @@
 # Mercantis Move2Cloud
 
-Documentação técnica da primeira entrega do projeto **Mercantis Move2Cloud — Infraestrutura em Nuvem AWS**.
+O Mercantis Move2Cloud é um MVP de aplicação web voltado a arquitetura AWS, segurança, documentação técnica e demonstração funcional mínima. A estratégia arquitetural definida é replatform com refactor parcial: a aplicação passa a ser preparada em containers e o banco de dados de produção é planejado como Amazon RDS for MariaDB em subnet privada.
 
-## Objetivo
+Esta etapa cria apenas a estrutura inicial do projeto. O objetivo é permitir evolução segura nas próximas tarefas, sem implementar todos os fluxos de negócio e sem publicar ambiente online.
 
-Apresentar a proposta de migração do ambiente de e-commerce da Mercantis para AWS, documentando o cenário atual, os problemas do ambiente AS-IS, a estratégia de migração, a arquitetura do MVP, a arquitetura final TO-BE, os controles de segurança, os Security Groups, os SLOs, o plano de operação, o plano de descomissionamento e o roadmap de evolução.
+## Arquitetura geral
 
-## Escopo da primeira entrega
+O ambiente local é composto por três serviços em Docker Compose:
 
-Esta entrega tem foco em documentação, arquitetura, segurança e planejamento técnico. O MVP descrito valida a infraestrutura e a integração entre frontend, backend/API em containers Docker e Amazon RDS for MariaDB privado, mas não representa uma loja virtual real em produção.
+- `frontend`: interface web simples e containerizada.
+- `backend`: API em Python com FastAPI.
+- `database`: MariaDB local para desenvolvimento.
 
-O escopo não inclui pagamento real, integração logística, antifraude, dados reais de clientes, nota fiscal, estoque real ou painel administrativo completo.
+Fluxo local:
+
+```text
+Navegador -> frontend -> backend FastAPI -> MariaDB
+```
+
+Para AWS, a referência futura mantém o banco em Amazon RDS for MariaDB privado, com acesso permitido somente pela camada de backend. Nenhuma implantação pública deve ser mantida sem validação, revisão de segurança e liberação explícita.
+
+## Como executar localmente
+
+Pré-requisitos:
+
+- Docker
+- Docker Compose
+
+Comandos:
+
+```powershell
+cd "C:\Users\lfpaz\OneDrive\Documentos\New project\mercantis-move2cloud"
+Copy-Item .env.example .env
+docker compose up --build
+```
+
+Após a subida dos containers:
+
+- Frontend: `http://localhost:8080`
+- Backend: `http://localhost:8000`
+- Health check: `http://localhost:8000/health`
+
+O arquivo `.env` criado localmente não deve ser versionado. Use apenas valores locais de desenvolvimento e nunca credenciais reais.
+
+## Estrutura principal
+
+- `backend/`: API FastAPI.
+- `frontend/`: frontend inicial containerizado.
+- `database/`: scripts SQL iniciais.
+- `docs/`: documentação técnica em português.
+- `infra/aws-reference/`: referências de arquitetura AWS para evolução.
+- `docker-compose.yml`: orquestração local.
+- `.env.example`: exemplo de variáveis de ambiente sem secrets reais.
+- `codex-instructions.md`: decisões técnicas para orientar próximas tarefas.
 
 ## Documentação
 
-- [Documentação técnica completa](docs/mercantis-move2cloud-documentacao.md)
-- [Security Groups](docs/security-groups.md)
-- [Checklist de segurança Dia 1](docs/checklist-dia-1.md)
-- [Roadmap](docs/roadmap.md)
+- [Documentação técnica](docs/documentacao-tecnica.md)
+- [Decisões arquiteturais](docs/arquitetura/decisoes-arquiteturais.md)
+- [Diagrama do MVP](docs/arquitetura/diagrama-mvp.md)
+- [Diagrama de referência final](docs/arquitetura/diagrama-final.md)
+- [Plano de implantação AWS](docs/aws/plano-de-implantacao-aws.md)
+- [Segurança](docs/aws/seguranca.md)
+- [Validação](docs/aws/validacao.md)
 
-## Diagramas
+## Restrições
 
-* [Diagrama da infraestrutura do MVP](docs/images/diagrama-mvp.png)
-* [Diagrama da infraestrutura final TO-BE](docs/images/diagrama-final-to-be.png)
-* [PNG fonte do diagrama MVP](infra/diagrams/diagrama-mvp.png)
-* [PNG fonte do diagrama final TO-BE](infra/diagrams/diagrama-final-to-be.png)
-* [Fonte SVG do diagrama final TO-BE](infra/diagrams/diagrama-final-to-be.svg)
-
-## Aviso operacional
-
-O MVP é um ambiente temporário para testes, validação técnica e demonstração acadêmica. Ele não deve permanecer online após os testes sem liberação formal, revisão de segurança, controle de custos e execução do plano de operação aprovado.
+- Não versionar `.env`.
+- Não criar credenciais reais no repositório.
+- Não usar dados reais de clientes no MVP.
+- Não implementar pagamento real, logística, antifraude ou estoque real nesta etapa.
+- Não publicar ambiente AWS sem liberação explícita.
