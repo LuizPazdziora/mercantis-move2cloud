@@ -4,7 +4,7 @@ Este documento descreve a Amazon EC2 como host Docker privado na arquitetura AWS
 
 ## Papel da EC2 no MVP
 
-A EC2 executa os containers da aplicação em uma subnet privada de aplicação. Ela não recebe tráfego direto da internet. O acesso externo deve chegar pela camada de borda e pelo Application Load Balancer.
+A EC2 executa os containers da aplicação em uma subnet privada de aplicação. Ela não possui exposição pública direta e não recebe tráfego direto da internet. O acesso externo deve chegar pela camada de borda e pelo Application Load Balancer.
 
 Essa abordagem mantém a simplicidade do Docker usado localmente e melhora o isolamento de rede da aplicação.
 
@@ -14,6 +14,7 @@ Essa abordagem mantém a simplicidade do Docker usado localmente e melhora o iso
 - Subnet privada de aplicação secundária: `10.0.12.0/24` para expansão futura.
 - Entrada permitida apenas a partir do Security Group do ALB.
 - Saída para internet, quando necessária, via NAT Gateway.
+- Nenhuma porta da EC2 deve ser aberta diretamente para a internet.
 
 ## Containers Esperados
 
@@ -32,7 +33,7 @@ O backend deve receber as variáveis necessárias para conectar ao RDS:
 DB_HOST=<endpoint-privado-do-rds>
 DB_PORT=3306
 DB_NAME=<nome-do-banco>
-DB_USER=<usuario-da-aplicacao>
+DB_USER=<usuario-do-banco>
 DB_PASSWORD=<segredo-gerenciado-fora-do-git>
 ```
 
@@ -40,7 +41,9 @@ Esses valores não devem ser versionados. Em evolução, `DB_PASSWORD` deve ser 
 
 ## Entrada Pelo ALB
 
-O ALB fica em subnets públicas e encaminha tráfego para a EC2 privada. Regras recomendadas:
+O ALB fica em subnets públicas e encaminha tráfego para a EC2 privada. As portas `80` ou `8080` representam tráfego interno recebido do ALB, não tráfego direto da internet.
+
+Regras recomendadas:
 
 - `SG-ALB` recebe HTTPS `443` da camada de borda.
 - `SG-EC2-APP` recebe `80` ou `8080` somente do `SG-ALB`.
@@ -79,10 +82,11 @@ docker run -d --name backend-api-container \
   -e DB_HOST="<endpoint-privado-do-rds>" \
   -e DB_PORT="3306" \
   -e DB_NAME="<nome-do-banco>" \
-  -e DB_USER="<usuario-da-aplicacao>" \
+  -e DB_USER="<usuario-do-banco>" \
   -e DB_PASSWORD="<segredo-fora-do-repositorio>" \
   mercantis-backend
 
+# Porta publicada apenas no host privado; origem permitida somente pelo SG-ALB.
 docker run -d --name frontend-container \
   --network mercantis-network \
   -p 80:80 \

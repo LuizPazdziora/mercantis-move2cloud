@@ -1,0 +1,14 @@
+project_name    = "mercantis-move2cloud"
+environment     = "dev"
+aws_region      = "sa-east-1"
+aws_region_edge = "us-east-1"
+vpc_cidr        = "10.0.0.0/16"
+
+# Para aplicar o ambiente dev, use:
+# infra/terraform/envs/dev/dev.tfvars.example
+
+common_tags = {
+  Project     = "Mercantis Move2Cloud"
+  Environment = "dev"
+  ManagedBy   = "Terraform"
+}

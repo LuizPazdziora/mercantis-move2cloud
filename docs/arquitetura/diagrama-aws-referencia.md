@@ -2,7 +2,7 @@
 
 Os diagramas abaixo estão em Mermaid e refletem o diagrama visual "Mercantis Move2Cloud - Infraestrutura AWS do MVP". Eles são referência documental e não indicam que recursos reais foram criados.
 
-## Diagrama 1 - Arquitetura AWS do MVP
+## Diagrama 1 — Arquitetura AWS do MVP
 
 ```mermaid
 flowchart LR
@@ -30,7 +30,7 @@ flowchart LR
                 end
 
                 subgraph appA["Subnet Privada de Aplicação 1A - 10.0.11.0/24"]
-                    ec2["Amazon EC2 com Docker"]
+                    ec2["EC2 privada com Docker"]
                     frontend["frontend-container\nNginx/web"]
                     backend["backend-api-container\nFastAPI"]
                 end
@@ -68,7 +68,7 @@ flowchart LR
     backend -. "artefatos ou arquivos futuros" .-> s3
 ```
 
-## Diagrama 2 - Fluxo Principal
+## Diagrama 2 — Fluxo Principal
 
 ```mermaid
 sequenceDiagram
@@ -91,7 +91,7 @@ sequenceDiagram
     FE-->>U: Atualização da interface
 ```
 
-## Diagrama 3 - Security Groups
+## Diagrama 3 — Security Groups
 
 ```mermaid
 flowchart TB

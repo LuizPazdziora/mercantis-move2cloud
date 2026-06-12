@@ -12,7 +12,7 @@ Fluxo principal documentado:
 Usuários
 -> HTTPS 443
 -> Amazon CloudFront / AWS WAF / AWS Shield Standard / ACM
--> Application Load Balancer em subnets públicas
+-> Application Load Balancer público em subnets públicas
 -> EC2 privada com Docker
 -> frontend-container e backend-api-container
 -> Amazon RDS for MariaDB em subnet privada de banco
@@ -58,7 +58,7 @@ Essa camada deve ser usada antes de qualquer exposição pública real.
 
 O ALB é o ponto de entrada público da camada de aplicação. Ele fica nas subnets públicas e recebe tráfego HTTPS 443 da camada de borda. Em seguida, encaminha o tráfego para a EC2 privada pela porta interna definida para os containers, como `80` ou `8080`.
 
-A EC2 não recebe tráfego direto da internet.
+A EC2 não fica em subnet pública e não recebe tráfego direto da internet.
 
 ### VPC
 
@@ -80,6 +80,8 @@ CIDRs sugeridos:
 ### Subnets Privadas de Aplicação
 
 As subnets privadas de aplicação hospedam a EC2 com Docker. A primeira zona pode executar o MVP, enquanto a segunda fica reservada para expansão futura.
+
+A EC2 da arquitetura oficial deve permanecer nessas subnets privadas, atrás do ALB.
 
 CIDRs sugeridos:
 
@@ -116,9 +118,23 @@ A EC2 fica em subnet privada de aplicação e executa os containers:
 
 O container `database` não deve fazer parte da arquitetura AWS final. O banco deve ser Amazon RDS for MariaDB.
 
+### Docker
+
+Docker mantém a estratégia de empacotamento validada no ambiente local. Na referência AWS, ele é executado na EC2 privada e hospeda apenas os containers da aplicação. A orquestração local com Docker Compose continua válida para desenvolvimento, mas a arquitetura AWS substitui o banco em container pelo RDS gerenciado.
+
+### Frontend Containerizado
+
+O `frontend-container` representa a interface web servida por Nginx. Ele fica na EC2 privada e recebe tráfego encaminhado pelo ALB, sem exposição direta à internet.
+
+### Backend FastAPI Containerizado
+
+O `backend-api-container` executa a API FastAPI. Ele acessa o RDS MariaDB pelo endpoint privado do banco, usando a porta `3306`, e deve receber configurações por variáveis de ambiente ou, em evolução, por mecanismo seguro de segredos.
+
 ### Amazon RDS for MariaDB
 
 O RDS fica em subnet privada de banco, com `Public accessibility` desativado. A porta `3306` deve ser permitida somente a partir do Security Group da aplicação.
+
+O RDS não fica público e não deve aceitar conexões diretamente da internet.
 
 ### Security Groups
 

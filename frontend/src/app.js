@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = window.MERCANTIS_API_BASE_URL || "/api";
 
 const state = {
   health: null,
@@ -43,6 +43,12 @@ const elements = {
   reloadOrdersButton: document.querySelector("#reload-orders-button"),
   toastRegion: document.querySelector("#toast-region"),
 };
+
+function normalizeDocumentationLinks() {
+  document.querySelectorAll('a[href="http://localhost:8000/docs"]').forEach((link) => {
+    link.setAttribute("href", "/docs");
+  });
+}
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -439,4 +445,5 @@ elements.reloadProductsButton.addEventListener("click", () => fetchProducts(true
 elements.reloadOrdersButton.addEventListener("click", () => fetchOrders(true));
 elements.refreshAllButton.addEventListener("click", () => refreshDashboard(true));
 
+normalizeDocumentationLinks();
 refreshDashboard();

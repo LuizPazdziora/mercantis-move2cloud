@@ -1,0 +1,78 @@
+#!/bin/bash
+set -euo pipefail
+
+dnf update -y
+dnf install -y curl git docker
+
+systemctl enable --now docker
+usermod -aG docker ec2-user || true
+
+if ! docker compose version >/dev/null 2>&1; then
+  mkdir -p /usr/local/lib/docker/cli-plugins
+  curl -SL "https://github.com/docker/compose/releases/download/v2.27.1/docker-compose-linux-x86_64" \
+    -o /usr/local/lib/docker/cli-plugins/docker-compose
+  chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+fi
+
+rm -rf /opt/mercantis-move2cloud
+git clone --branch "${repository_branch}" "${repository_url}" /opt/mercantis-move2cloud
+cd /opt/mercantis-move2cloud
+
+cat > .env <<'ENVEOF'
+DB_HOST=${db_host}
+DB_PORT=${db_port}
+DB_NAME=${db_name}
+DB_USER=${db_user}
+DB_PASSWORD=${db_password}
+ALLOWED_ORIGINS=${allowed_origins}
+ENVEOF
+
+chmod 600 .env
+
+export DB_HOST="${db_host}"
+export DB_PORT="${db_port}"
+export DB_NAME="${db_name}"
+export DB_USER="${db_user}"
+export DB_PASSWORD="${db_password}"
+
+for attempt in $(seq 1 30); do
+  if docker run --rm --network host \
+    -e MYSQL_PWD="$DB_PASSWORD" \
+    -e DB_HOST="$DB_HOST" \
+    -e DB_PORT="$DB_PORT" \
+    -e DB_USER="$DB_USER" \
+    -e DB_NAME="$DB_NAME" \
+    mariadb:11.4 \
+    mariadb-admin ping -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" --silent; then
+    break
+  fi
+
+  if [ "$attempt" -eq 30 ]; then
+    echo "RDS MariaDB nao respondeu dentro do tempo esperado." >&2
+    exit 1
+  fi
+
+  sleep 10
+done
+
+docker run --rm --network host \
+  -e MYSQL_PWD="$DB_PASSWORD" \
+  -e DB_HOST="$DB_HOST" \
+  -e DB_PORT="$DB_PORT" \
+  -e DB_USER="$DB_USER" \
+  -e DB_NAME="$DB_NAME" \
+  -v /opt/mercantis-move2cloud/database:/sql:ro \
+  mariadb:11.4 \
+  sh -c 'mariadb -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" "$DB_NAME" < /sql/init.sql'
+
+docker run --rm --network host \
+  -e MYSQL_PWD="$DB_PASSWORD" \
+  -e DB_HOST="$DB_HOST" \
+  -e DB_PORT="$DB_PORT" \
+  -e DB_USER="$DB_USER" \
+  -e DB_NAME="$DB_NAME" \
+  -v /opt/mercantis-move2cloud/database:/sql:ro \
+  mariadb:11.4 \
+  sh -c 'mariadb -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" "$DB_NAME" < /sql/seed.sql'
+
+docker compose -f docker-compose.aws.yml up -d --build

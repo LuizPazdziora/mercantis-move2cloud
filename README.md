@@ -141,13 +141,13 @@ Em uma implantação futura na AWS, as origens CORS devem ser restritas aos dom�
 
 A arquitetura AWS de referência foi atualizada para refletir o diagrama "Mercantis Move2Cloud - Infraestrutura AWS do MVP". Nenhum recurso real foi criado na AWS nesta etapa, a aplicação não foi publicada online e não foram geradas credenciais reais.
 
-Fluxo de referência:
+Fluxo oficial da arquitetura AWS de referência:
 
 ```text
 Usuários
 -> HTTPS 443
 -> Amazon CloudFront / AWS WAF / AWS Shield Standard / ACM
--> Application Load Balancer em subnets públicas
+-> Application Load Balancer público em subnets públicas
 -> EC2 em subnet privada de aplicação executando containers Docker
 -> Amazon RDS for MariaDB em subnet privada de banco
 ```
@@ -155,15 +155,40 @@ Usuários
 Principais componentes documentados:
 
 - CloudFront, AWS WAF, AWS Shield Standard e ACM na camada de borda.
-- Application Load Balancer nas subnets públicas.
-- EC2 privada executando `frontend-container` e `backend-api-container`.
-- RDS MariaDB privado, sem IP público.
+- Application Load Balancer público como ponto de entrada da camada de aplicação.
+- EC2 privada executando `frontend-container` e `backend-api-container`, sem tráfego direto da internet.
+- RDS MariaDB privado, sem IP público e acessível somente pela aplicação.
 - NAT Gateway para saída controlada da EC2 privada.
 - CloudWatch para logs, métricas e alarmes.
 - Secrets Manager como evolução recomendada para segredos.
 - S3 como serviço auxiliar/opcional para artefatos, backups exportados ou arquivos estáticos futuros.
 
 A aplicação local continua usando Docker Compose. A referência AWS usa EC2 privada com Docker e RDS gerenciado.
+
+## Infraestrutura Como Código com Terraform
+
+A infraestrutura AWS de desenvolvimento está definida em [infra/terraform](infra/terraform/README.md). O diretório operacional é:
+
+```text
+infra/terraform/envs/dev
+```
+
+O Terraform prepara o fluxo:
+
+```text
+Usuário
+-> Application Load Balancer público
+-> EC2 privada com Docker
+-> Amazon RDS for MariaDB privado
+```
+
+Após `terraform apply -var-file="dev.tfvars"`, a aplicação deve ficar acessível pelo output `alb_dns_name`:
+
+```text
+http://<alb_dns_name>
+```
+
+O `apply` cria recursos reais e pode gerar cobrança na AWS. Ele deve ser executado manualmente somente após revisão e autorização. Arquivos reais de variáveis, como `dev.tfvars`, não devem ser versionados. Use apenas os arquivos `*.tfvars.example` como referência.
 
 ## Documentação
 
@@ -185,12 +210,14 @@ A aplicação local continua usando Docker Compose. A referência AWS usa EC2 pr
 - [Plano de implantação AWS](docs/aws/plano-de-implantacao-aws.md)
 - [Checklist AWS](docs/aws/checklist-aws.md)
 - [Diagrama AWS de referência](docs/arquitetura/diagrama-aws-referencia.md)
+- [Terraform](infra/terraform/README.md)
 
 ## Restrições Atuais
 
 - Não criar recursos reais na AWS.
 - Não executar AWS CLI nesta etapa.
-- Não criar Terraform ou CloudFormation nesta etapa.
+- Não executar `terraform apply` ou criar recursos reais sem liberação explícita.
+- Não criar CloudFormation nesta etapa.
 - Não publicar a aplicação online sem liberação explícita.
 - Não versionar `.env`.
 - Não usar credenciais reais.

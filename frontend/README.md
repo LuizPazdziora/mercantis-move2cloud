@@ -16,6 +16,7 @@ frontend/
 │   ├── app.js
 │   └── styles.css
 ├── Dockerfile
+├── nginx.conf
 └── README.md
 ```
 
@@ -30,8 +31,12 @@ http://localhost:8080
 A URL base da API está centralizada em `frontend/src/app.js`:
 
 ```javascript
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = window.MERCANTIS_API_BASE_URL || "/api";
 ```
+
+Por padrão, o frontend chama a API pelo caminho relativo `/api`. O Nginx do container encaminha esse prefixo para o backend em `backend:8000`.
+
+Essa configuração mantém o ambiente local funcionando com Docker Compose e também permite a publicação na AWS via Application Load Balancer, sem depender de `localhost` no navegador do usuário externo.
 
 Endpoints consumidos:
 

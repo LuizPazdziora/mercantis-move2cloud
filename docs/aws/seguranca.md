@@ -61,13 +61,15 @@ Não deve existir regra permitindo acesso à porta `3306` a partir de `0.0.0.0/0
 
 ## Security Groups
 
-| Security Group | Entrada permitida | Observação |
-| --- | --- | --- |
-| `SG-ALB` | HTTPS `443` da camada de borda | Entrada pública controlada |
-| `SG-EC2-APP` | `80` ou `8080` somente do `SG-ALB` | EC2 privada |
-| `SG-RDS` | `3306` somente do `SG-EC2-APP` | Banco privado |
+| Security Group | Entrada permitida | Saída permitida | Observação |
+| --- | --- | --- | --- |
+| `SG-ALB` | HTTPS `443` da camada de borda/CloudFront | HTTP `80` ou `8080` para `SG-EC2-APP` | Ponto de entrada da aplicação |
+| `SG-EC2-APP` | HTTP `80` ou `8080` somente do `SG-ALB` | `3306` para `SG-RDS`; `443` via NAT Gateway para atualizações e downloads | EC2 privada com containers |
+| `SG-RDS` | `3306` somente do `SG-EC2-APP` | Tráfego de resposta stateful | Banco privado, sem acesso público |
 
 Regras amplas ou não utilizadas devem ser removidas.
+
+O `SG-RDS` nunca deve liberar `3306` para `0.0.0.0/0`.
 
 ## IAM e Credenciais
 

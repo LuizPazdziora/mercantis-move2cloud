@@ -41,6 +41,8 @@ As subnets públicas recebem recursos que precisam de conectividade pública con
 
 A aplicação não deve ser executada diretamente nessas subnets no desenho atual.
 
+A EC2 da aplicação não deve ser posicionada em subnet pública na arquitetura oficial.
+
 ## Subnets Privadas de Aplicação
 
 As subnets privadas de aplicação recebem a EC2 que executa Docker. A EC2 não recebe tráfego direto da internet. O acesso externo chega ao ALB e, a partir dele, segue para a EC2 por Security Group.
@@ -52,6 +54,8 @@ A subnet `10.0.12.0/24` fica reservada para expansão futura, como segunda EC2, 
 As subnets privadas de banco recebem o Amazon RDS for MariaDB por meio de um DB Subnet Group. O RDS deve usar subnets em mais de uma zona de disponibilidade, mesmo que o MVP comece com implantação simples.
 
 O RDS deve permanecer sem IP público e sem rota direta para internet.
+
+O acesso ao RDS deve ocorrer somente a partir da aplicação, pela porta `3306` e por Security Group.
 
 ## Internet Gateway
 
