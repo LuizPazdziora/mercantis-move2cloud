@@ -115,14 +115,14 @@
               <p class="eyebrow">Arquitetura AWS do MVP</p>
               <h2 id="overview-title">Visão Geral do MVP</h2>
             </div>
-            <span class="status-badge status-badge-neutral">Infraestrutura provisionada com Terraform</span>
+            <span class="status-badge status-badge-neutral">Infraestrutura AWS provisionada com Terraform</span>
           </div>
 
           <div class="architecture-flow" aria-label="Fluxo técnico AWS">
             <div class="flow-node">
               <span class="node-icon">FE</span>
               <strong>Frontend Nginx</strong>
-              <small>na EC2 privada</small>
+              <small>via ALB</small>
             </div>
             <span class="flow-arrow" aria-hidden="true">→</span>
             <div class="flow-node">
@@ -133,7 +133,7 @@
             <span class="flow-arrow" aria-hidden="true">→</span>
             <div class="flow-node">
               <span class="node-icon">DB</span>
-              <strong>Amazon RDS for MariaDB</strong>
+              <strong>Amazon RDS MariaDB</strong>
               <small>privado</small>
             </div>
           </div>

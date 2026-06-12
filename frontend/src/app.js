@@ -74,14 +74,14 @@ function normalizeEnvironmentCopy() {
   }
 
   if (overviewBadge) {
-    overviewBadge.textContent = "Infraestrutura provisionada com Terraform";
+    overviewBadge.textContent = "Infraestrutura AWS provisionada com Terraform";
   }
 
   if (flow) {
     flow.setAttribute("aria-label", "Fluxo técnico AWS");
   }
 
-  ["Nginx na EC2", "proxy /api", "RDS privado"].forEach((label, index) => {
+  ["via ALB", "via proxy /api", "privado"].forEach((label, index) => {
     if (flowDetails[index]) {
       flowDetails[index].textContent = label;
     }
