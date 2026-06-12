@@ -1,6 +1,6 @@
 # Rede e VPC
 
-Este documento descreve a rede AWS de referência para o Mercantis Move2Cloud, alinhada ao diagrama de infraestrutura do MVP. A proposta é documental e não cria recursos reais.
+Este documento descreve a rede AWS de desenvolvimento do Mercantis Move2Cloud, alinhada ao ambiente provisionado com Terraform para o MVP. A arquitetura separa a entrada pública, a camada de aplicação privada e o banco de dados privado.
 
 ## Região
 
@@ -20,14 +20,14 @@ CIDR sugerido:
 
 Esse bloco permite separar subnets públicas, subnets privadas de aplicação e subnets privadas de banco, mantendo espaço para expansão futura.
 
-## Subnets Sugeridas
+## Subnets
 
 | Camada | Subnet | CIDR | Uso |
 | --- | --- | --- | --- |
 | Pública | Public Subnet 1A | `10.0.1.0/24` | ALB e NAT Gateway |
 | Pública | Public Subnet 1B | `10.0.2.0/24` | ALB e expansão |
 | Privada de aplicação | Private App Subnet 1A | `10.0.11.0/24` | EC2 com Docker no MVP |
-| Privada de aplicação | Private App Subnet 1B | `10.0.12.0/24` | Expansão futura e alta disponibilidade |
+| Privada de aplicação | Private App Subnet 1B | `10.0.12.0/24` | Expansão futura |
 | Privada de banco | Private DB Subnet 1A | `10.0.21.0/24` | RDS MariaDB |
 | Privada de banco | Private DB Subnet 1B | `10.0.22.0/24` | DB Subnet Group e evolução Multi-AZ |
 
@@ -35,17 +35,17 @@ Esse bloco permite separar subnets públicas, subnets privadas de aplicação e 
 
 As subnets públicas recebem recursos que precisam de conectividade pública controlada:
 
-- Application Load Balancer.
+- Application Load Balancer público HTTP/80.
 - NAT Gateway.
 - Rota para o Internet Gateway.
 
-A aplicação não deve ser executada diretamente nessas subnets no desenho atual.
+A aplicação não é executada diretamente nessas subnets no desenho atual.
 
 A EC2 da aplicação não deve ser posicionada em subnet pública na arquitetura oficial.
 
 ## Subnets Privadas de Aplicação
 
-As subnets privadas de aplicação recebem a EC2 que executa Docker. A EC2 não recebe tráfego direto da internet. O acesso externo chega ao ALB e, a partir dele, segue para a EC2 por Security Group.
+As subnets privadas de aplicação recebem a EC2 que executa Docker Compose com os containers `frontend` e `backend`. A EC2 não recebe tráfego direto da internet. O acesso externo chega ao ALB e, a partir dele, segue para a EC2 por Security Group.
 
 A subnet `10.0.12.0/24` fica reservada para expansão futura, como segunda EC2, Auto Scaling ou maior disponibilidade.
 
@@ -59,7 +59,7 @@ O acesso ao RDS deve ocorrer somente a partir da aplicação, pela porta `3306` 
 
 ## Internet Gateway
 
-O Internet Gateway conecta a VPC à internet. Ele atende a camada pública, especialmente CloudFront/ALB indiretamente e rotas públicas associadas às subnets públicas.
+O Internet Gateway conecta a VPC à internet. Ele atende a camada pública, especialmente o ALB e as rotas públicas associadas às subnets públicas.
 
 ## NAT Gateway
 
@@ -102,4 +102,8 @@ Não deve ter rota direta para Internet Gateway. Em geral, o RDS precisa apenas 
 - RDS sem IP público.
 - Porta `3306` permitida apenas do Security Group da aplicação para o Security Group do RDS.
 - SSH bloqueado ou fortemente restrito.
-- Session Manager recomendado para acesso administrativo futuro.
+- Session Manager para acesso administrativo à EC2 privada.
+
+## Evolução Futura
+
+CloudFront, WAF, ACM, Route 53, Auto Scaling e RDS Multi-AZ não fazem parte da implantação atual. Esses componentes podem ser adicionados em uma etapa posterior, após revisão de custo, segurança e necessidade operacional.

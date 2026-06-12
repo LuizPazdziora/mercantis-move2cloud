@@ -50,6 +50,11 @@ variable "repository_branch" {
 variable "db_host" {
   description = "Endpoint DNS do RDS MariaDB."
   type        = string
+
+  validation {
+    condition     = length(regexall(":", var.db_host)) == 0
+    error_message = "Informe DB_HOST apenas com o host do RDS, sem porta."
+  }
 }
 
 variable "db_port" {
@@ -72,12 +77,20 @@ variable "db_password" {
   description = "Senha do banco de dados. Valor sensível, não versionar em tfvars real."
   type        = string
   sensitive   = true
+
+  validation {
+    condition = (
+      length(trimspace(var.db_password)) >= 12 &&
+      !contains(["altere_esta_senha_fora_do_git", "change_me", "password", "senha"], lower(trimspace(var.db_password)))
+    )
+    error_message = "db_password deve ser uma senha real de desenvolvimento, informada em dev.tfvars local e nunca versionada. Nao use vazio, placeholder, CHANGE_ME, password ou senha."
+  }
 }
 
 variable "allowed_origins" {
   description = "Origens CORS permitidas para o backend."
   type        = string
-  default     = "http://localhost"
+  default     = "*"
 }
 
 variable "common_tags" {

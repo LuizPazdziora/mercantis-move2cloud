@@ -90,7 +90,24 @@ db_password = "ALTERE_ESTA_SENHA_FORA_DO_GIT"
 
 Use uma senha forte apenas no arquivo local. O arquivo `dev.tfvars` é ignorado pelo Git e não deve ser versionado.
 
+O arquivo `dev.tfvars.example` é apenas referência. Não execute `terraform apply -var-file="dev.tfvars.example"` e não coloque senha real em nenhum arquivo `*.example`, README, prompt, commit ou documentação.
+
+O Terraform possui validação para impedir senha vazia ou valores reservados como `ALTERE_ESTA_SENHA_FORA_DO_GIT`, `CHANGE_ME`, `password` e `senha`. Se essa validação falhar, atualize somente o `dev.tfvars` local, sem commitar o arquivo.
+
+No Windows PowerShell, o arquivo local pode ser preparado com:
+
+```powershell
+.\scripts\aws\prepare-dev-tfvars.ps1
+```
+
+Esse script apenas copia `dev.tfvars.example` para `dev.tfvars` quando o arquivo local ainda não existe e abre o Notepad para edição. Ele não pede, não salva e não imprime a senha.
+
 Em produção, a recomendação é substituir esse fluxo por AWS Secrets Manager ou SSM Parameter Store. Para este ambiente dev, a senha é passada ao Terraform como variável sensível e usada no `user_data` da EC2 para gerar o `.env` local da instância.
+
+O valor sensível informado localmente em `var.db_password` é usado em dois pontos:
+
+- Configuração do Amazon RDS for MariaDB.
+- Geração do `.env` interno da EC2 via `user_data`, com `DB_PASSWORD` renderizado pelo Terraform.
 
 ## Comandos
 
@@ -177,6 +194,67 @@ curl http://$(terraform output -raw alb_dns_name)/
 curl http://$(terraform output -raw alb_dns_name)/api/health
 curl http://$(terraform output -raw alb_dns_name)/api/db-health
 curl http://$(terraform output -raw alb_dns_name)/api/products
+```
+
+## Diagnóstico de 502 no ALB
+
+Se o Application Load Balancer retornar `502 Bad Gateway` ou o Target Group ficar `unhealthy`, valide primeiro a inicialização da EC2 e dos containers. O fluxo esperado é: o `user_data` instala Docker, clona o repositório, cria o `.env` local da EC2, inicializa o schema no RDS e executa `docker compose -f docker-compose.aws.yml up -d --build`.
+
+Pontos de verificação pela sessão SSM da EC2:
+
+```bash
+sudo cloud-init status --long
+sudo tail -n 200 /var/log/cloud-init-output.log
+sudo tail -n 200 /var/log/mercantis-user-data.log
+docker ps
+cd /opt/mercantis-move2cloud
+docker compose -f docker-compose.aws.yml ps
+docker compose -f docker-compose.aws.yml logs --tail=200
+curl -i http://localhost/
+curl -i http://localhost/api/health
+curl -i http://localhost/api/db-health
+```
+
+Se o `cloud-init` falhar durante a instalação do Docker, confirme no log que o comando executado é:
+
+```bash
+systemctl enable --now docker
+```
+
+No Amazon Linux 2023, o sistema pode vir com `curl-minimal` instalado. Instalar o pacote `curl` completo pode gerar conflito com `curl-minimal`, por isso o `user_data` instala apenas `docker` e `git`:
+
+```bash
+dnf install -y docker git
+```
+
+O script usa o `curl` já disponível no sistema e valida sua presença antes de baixar o plugin do Docker Compose:
+
+```bash
+command -v curl
+curl --version
+```
+
+O `user_data` também registra a versão instalada com:
+
+```bash
+docker --version
+```
+
+Se o `.env` renderizado na EC2 mostrar `DB_PASSWORD=ALTERE_ESTA_SENHA_FORA_DO_GIT`, o `dev.tfvars` local ainda está com o placeholder e precisa ser corrigido antes de recriar a instância. A senha real deve existir apenas no ambiente local ou em mecanismo seguro equivalente, nunca no Git.
+
+Também confirme no console AWS:
+
+- Target Group associado ao ALB.
+- Status do Target Group e motivo do health check.
+- Porta do Target Group apontando para `80`.
+- Health check em `/`.
+- Security Group do ALB permitindo HTTP `80`.
+- Security Group da EC2 permitindo entrada apenas do SG do ALB na porta `80`.
+
+Para reaplicar somente o bootstrap da aplicação, sem destruir RDS, VPC, ALB ou demais recursos, recrie apenas a EC2:
+
+```bash
+terraform apply -replace="module.ec2_docker.aws_instance.app" -var-file="dev.tfvars"
 ```
 
 ## Segurança

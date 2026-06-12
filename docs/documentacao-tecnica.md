@@ -2,9 +2,9 @@
 
 ## Objetivo
 
-O Mercantis Move2Cloud é um MVP de aplicação web com foco em arquitetura AWS, segurança, documentação técnica e demonstração funcional mínima. A base atual cria a estrutura inicial para evolução do projeto, mantendo separação entre frontend, backend e banco de dados.
+O Mercantis Move2Cloud é um MVP de aplicação web com foco em arquitetura AWS, segurança, documentação técnica e demonstração funcional mínima. A base atual mantém separação entre frontend, backend e banco de dados e possui execução local com Docker Compose e ambiente AWS de desenvolvimento provisionado com Terraform.
 
-## Arquitetura local
+## Execução local
 
 O ambiente local usa Docker Compose com três serviços:
 
@@ -12,9 +12,11 @@ O ambiente local usa Docker Compose com três serviços:
 - `backend`: API FastAPI em Python.
 - `database`: MariaDB para desenvolvimento local.
 
-## Arquitetura AWS planejada
+## Arquitetura AWS de desenvolvimento
 
-A implantação AWS futura deve seguir a estratégia de replatform com refactor parcial. O banco de dados deve ser Amazon RDS for MariaDB em subnet privada. A aplicação deve permanecer em camada privada sempre que possível, com entrada pública controlada e somente após liberação explícita.
+A implantação AWS atual segue a estratégia de replatform com refactor parcial. O ponto de entrada é um Application Load Balancer público em HTTP/80, a aplicação roda em uma EC2 privada com Docker Compose e o banco de dados é Amazon RDS for MariaDB em subnets privadas.
+
+Na AWS, o frontend é servido por Nginx, o backend FastAPI é acessado pelo proxy `/api` e o banco local em container não é usado.
 
 ## Escopo implementado nesta base
 
@@ -22,8 +24,10 @@ A implantação AWS futura deve seguir a estratégia de replatform com refactor 
 - Estrutura de diretórios do frontend.
 - Dockerfile para backend e frontend.
 - Docker Compose com frontend, backend e database.
+- Docker Compose AWS com frontend e backend, sem container de banco.
 - Scripts iniciais de banco.
 - Endpoint `/health`.
+- Infraestrutura Terraform para VPC, ALB, EC2 privada e RDS privado.
 - Documentação técnica inicial.
 
 ## Limites
@@ -33,4 +37,4 @@ A implantação AWS futura deve seguir a estratégia de replatform com refactor 
 - Não há antifraude.
 - Não há estoque real.
 - Não há dados reais de clientes.
-- Não há ambiente AWS publicado por este repositório.
+- Componentes como CloudFront, WAF, ACM, Route 53, Auto Scaling e RDS Multi-AZ permanecem como evolução futura.

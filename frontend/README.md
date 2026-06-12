@@ -4,7 +4,7 @@ Frontend funcional do MVP Mercantis Move2Cloud, implementado com HTML, CSS e Jav
 
 ## Objetivo
 
-Disponibilizar um dashboard local para validar o consumo real da API FastAPI, acompanhar status do ambiente, listar produtos, listar pedidos e cadastrar dados fictícios para demonstração do MVP.
+Disponibilizar um dashboard para validar o consumo real da API FastAPI, acompanhar status do ambiente, listar produtos, listar pedidos e cadastrar dados fictícios para demonstração do MVP. O mesmo frontend funciona localmente com Docker Compose e no ambiente AWS via ALB, EC2 privada e Nginx.
 
 ## Estrutura de arquivos
 
@@ -53,7 +53,7 @@ O frontend não acessa o MariaDB diretamente. O acesso ao banco é feito somente
 
 - Dashboard com status da API e do banco.
 - Cards de total de produtos, total de pedidos, valor total em pedidos e estoque total.
-- Visão geral do fluxo local `Frontend -> Backend FastAPI -> MariaDB`.
+- Visão geral do fluxo `Frontend -> Backend FastAPI -> MariaDB/RDS`.
 - Listagem de produtos com busca e filtro por status.
 - Cadastro de produtos com validação local.
 - Listagem de pedidos.

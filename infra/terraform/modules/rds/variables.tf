@@ -32,6 +32,14 @@ variable "db_password" {
   description = "Senha do banco RDS. Deve ser informada em tfvars local ou secret externo."
   type        = string
   sensitive   = true
+
+  validation {
+    condition = (
+      length(trimspace(var.db_password)) >= 12 &&
+      !contains(["altere_esta_senha_fora_do_git", "change_me", "password", "senha"], lower(trimspace(var.db_password)))
+    )
+    error_message = "db_password deve ser uma senha real de desenvolvimento, informada em dev.tfvars local e nunca versionada. Nao use vazio, placeholder, CHANGE_ME, password ou senha."
+  }
 }
 
 variable "db_port" {

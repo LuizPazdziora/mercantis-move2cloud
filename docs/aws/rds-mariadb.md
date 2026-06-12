@@ -1,10 +1,10 @@
 # Amazon RDS for MariaDB
 
-Este documento descreve o uso de Amazon RDS for MariaDB na arquitetura AWS de referência do Mercantis Move2Cloud.
+Este documento descreve o uso de Amazon RDS for MariaDB no ambiente AWS de desenvolvimento do Mercantis Move2Cloud.
 
-## Uso Previsto
+## Uso Atual
 
-O RDS substitui o MariaDB local em container. A aplicação continua usando MariaDB como banco relacional, mas o banco passa a ser gerenciado pela AWS e posicionado em subnets privadas de banco.
+O RDS substitui o MariaDB local em container no ambiente AWS. A aplicação continua usando MariaDB como banco relacional, mas o banco passa a ser gerenciado pela AWS e posicionado em subnets privadas de banco.
 
 ## Justificativa
 
@@ -54,7 +54,7 @@ Senhas não devem ser gravadas no GitHub, em Dockerfile, em imagens Docker ou em
 | Execução | Container `database` | Amazon RDS for MariaDB |
 | Host | `database` na rede Docker | Endpoint privado do RDS |
 | Porta | `3306` interna e `3307` no host local | `3306` privada |
-| Dados demonstrativos | `seed.sql` | Não usar dados fictícios em produção |
+| Dados demonstrativos | `seed.sql` | `seed.sql` aplicado no ambiente dev; não usar dados fictícios em produção |
 | Backup | Volume Docker local | Backup automático e snapshots |
 | Segurança | Rede Docker local | Subnet privada e Security Group |
 

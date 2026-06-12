@@ -1,6 +1,6 @@
 # Diagrama de Referência Final
 
-A visão final prevista nesta etapa mantém a separação entre borda, aplicação e banco de dados, sem implantação pública automática.
+A visão final desta etapa mantém a separação entre entrada pública controlada, aplicação privada e banco de dados privado. O ambiente AWS de desenvolvimento já usa ALB público em HTTP/80, EC2 privada com Docker Compose e RDS MariaDB privado.
 
 ## Componentes de referência
 
@@ -11,13 +11,14 @@ A visão final prevista nesta etapa mantém a separação entre borda, aplicaç�
 - Backend acessando o banco pela porta 3306.
 - Amazon RDS for MariaDB sem IP público.
 - Observabilidade e auditoria com serviços AWS apropriados para logs e rastreabilidade.
+- CloudFront, WAF, ACM, HTTPS, Route 53, Auto Scaling e RDS Multi-AZ como evolução futura.
 
 ## Fluxo alvo
 
 ```text
 Usuário
--> entrada HTTPS controlada
--> camada de aplicação privada
+-> Application Load Balancer público HTTP/80
+-> EC2 privada com Docker Compose
 -> backend FastAPI
 -> Amazon RDS for MariaDB privado
 ```

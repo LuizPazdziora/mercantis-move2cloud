@@ -1,18 +1,18 @@
 # Decisões Arquiteturais
 
-Este documento registra decisões técnicas do Mercantis Move2Cloud para orientar a evolução do MVP local e da arquitetura AWS de referência. Nenhum recurso real foi criado na AWS nesta etapa.
+Este documento registra decisões técnicas do Mercantis Move2Cloud para orientar a evolução do MVP local e do ambiente AWS de desenvolvimento.
 
 ## Estratégia de Migração
 
 **Decisão:** adotar replatform com refactor parcial.
 
-**Justificativa:** a aplicação é preparada em containers e o banco de dados é planejado para evoluir para Amazon RDS for MariaDB, reduzindo dependência de infraestrutura local sem exigir reescrita completa.
+**Justificativa:** a aplicação é preparada em containers e o banco de dados evolui para Amazon RDS for MariaDB na AWS, reduzindo dependência de infraestrutura local sem exigir reescrita completa.
 
-**Impacto positivo:** permite validar o MVP localmente, separar camadas e criar caminho de evolução para AWS com menor risco.
+**Impacto positivo:** permite validar o MVP localmente, separar camadas e executar uma implantação AWS de desenvolvimento com menor risco.
 
 **Limitações:** a arquitetura local não representa alta disponibilidade nem operação produtiva.
 
-**Evolução futura:** avançar para implantação controlada em AWS somente após validação documental, segurança, evidências e aprovação.
+**Evolução futura:** ampliar controles de segurança, observabilidade e disponibilidade antes de uma publicação produtiva.
 
 ## Backend em FastAPI
 
@@ -48,7 +48,7 @@ Este documento registra decisões técnicas do Mercantis Move2Cloud para orienta
 
 **Limitações:** Docker Compose não substitui arquitetura produtiva com rede, balanceamento, observabilidade e segurança gerenciada.
 
-**Evolução futura:** manter Docker Compose apenas para desenvolvimento e usar referência AWS separada para implantação controlada.
+**Evolução futura:** manter Docker Compose local para desenvolvimento e avaliar orquestração gerenciada somente se houver necessidade operacional.
 
 ## Porta Interna 3306 e Porta Local 3307
 
@@ -60,7 +60,7 @@ Este documento registra decisões técnicas do Mercantis Move2Cloud para orienta
 
 **Limitações:** ferramentas locais devem usar `127.0.0.1:3307`, enquanto o backend usa `database:3306`.
 
-**Evolução futura:** em AWS, o backend usará o endpoint privado do RDS na porta `3306`.
+**AWS:** o backend usa o endpoint privado do RDS na porta `3306`.
 
 ## Variáveis de Ambiente
 
@@ -68,11 +68,11 @@ Este documento registra decisões técnicas do Mercantis Move2Cloud para orienta
 
 **Justificativa:** configurações variam por ambiente e não devem ficar fixas no código.
 
-**Impacto positivo:** facilita execução local e prepara o projeto para ambientes futuros.
+**Impacto positivo:** facilita execução local e a execução AWS com variáveis renderizadas no `.env` interno da EC2.
 
 **Limitações:** valores sensíveis exigem gestão adequada e não devem ser tratados apenas por arquivos locais em ambiente AWS.
 
-**Evolução futura:** usar AWS Secrets Manager para segredos em implantação controlada.
+**Evolução futura:** usar AWS Secrets Manager ou SSM Parameter Store para segredos.
 
 ## Não Versionamento de `.env`
 
@@ -84,21 +84,21 @@ Este documento registra decisões técnicas do Mercantis Move2Cloud para orienta
 
 **Limitações:** o usuário deve criar `.env` localmente antes de executar Docker Compose.
 
-**Evolução futura:** substituir segredos locais por serviço gerenciado em AWS.
+**Evolução futura:** substituir o uso de `dev.tfvars` para segredos por serviço gerenciado em AWS.
 
 ## CORS Restrito
 
-**Decisão:** permitir a origem local `http://localhost:8080` por padrão.
+**Decisão:** permitir a origem local `http://localhost:8080` por padrão e usar proxy `/api` no ambiente AWS.
 
-**Justificativa:** o frontend local precisa consumir o backend em `http://localhost:8000`.
+**Justificativa:** o frontend local precisa consumir o backend em `http://localhost:8000`; na AWS, frontend e API usam o mesmo domínio do ALB.
 
 **Impacto positivo:** evita CORS completamente aberto durante a validação local.
 
 **Limitações:** a origem local não representa o domínio final de uma implantação publicada.
 
-**Evolução futura:** restringir CORS ao domínio oficial da aplicação em AWS.
+**Evolução futura:** restringir CORS ao domínio oficial antes de uma publicação produtiva.
 
-# Decisões AWS de Referência
+# Decisões AWS de Desenvolvimento
 
 ## Camada de Borda com CloudFront, WAF, Shield e ACM
 
@@ -118,7 +118,7 @@ Este documento registra decisões técnicas do Mercantis Move2Cloud para orienta
 
 **Justificativa:** o ALB encaminha tráfego autorizado para a EC2 privada sem expor a instância diretamente à internet.
 
-**Impacto positivo:** melhora segmentação, health checks e controle do tráfego HTTP/HTTPS.
+**Impacto positivo:** melhora segmentação, health checks e controle do tráfego HTTP atual, com caminho para HTTPS futuro.
 
 **Limitações:** o MVP inicial pode ter apenas um host de aplicação, sem alta disponibilidade completa.
 
@@ -166,7 +166,7 @@ Este documento registra decisões técnicas do Mercantis Move2Cloud para orienta
 
 **Justificativa:** cada camada deve aceitar apenas a origem e a porta necessárias.
 
-**Impacto positivo:** restringe o fluxo a `CloudFront/Internet -> ALB -> EC2 privada -> RDS privado`.
+**Impacto positivo:** restringe o fluxo atual a `Internet -> ALB -> EC2 privada -> RDS privado`, com CloudFront/WAF previstos apenas como evolução.
 
 **Limitações:** regras incorretas podem expor serviços sensíveis ou bloquear a aplicação.
 
@@ -176,7 +176,7 @@ Este documento registra decisões técnicas do Mercantis Move2Cloud para orienta
 
 **Decisão:** recomendar CloudWatch para logs, métricas e alarmes.
 
-**Justificativa:** a operação em AWS precisa de rastreabilidade para aplicação, EC2, ALB, WAF e RDS.
+**Justificativa:** a operação em AWS precisa de rastreabilidade para aplicação, EC2, ALB e RDS. WAF entra na evolução de borda.
 
 **Impacto positivo:** melhora diagnóstico de falhas e acompanhamento de disponibilidade.
 
@@ -244,14 +244,14 @@ Este documento registra decisões técnicas do Mercantis Move2Cloud para orienta
 
 **Evolução futura:** usar múltiplas EC2, Auto Scaling, NAT Gateway por AZ e RDS Multi-AZ.
 
-## Não Exposição Pública Sem Validação
+## Publicação Controlada
 
-**Decisão:** não publicar a aplicação em ambiente aberto sem validação técnica e aprovação.
+**Decisão:** manter a publicação do MVP controlada pelo ALB e documentar validações antes de qualquer ampliação de exposição.
 
-**Justificativa:** antes de exposição pública, são necessários HTTPS, CORS restrito, logs, backups, revisão de Security Groups e plano de rollback.
+**Justificativa:** antes de uma publicação produtiva, são necessários HTTPS, CORS restrito, logs, backups, revisão de Security Groups e plano de rollback.
 
 **Impacto positivo:** reduz risco de vazamento, indisponibilidade e acesso indevido.
 
-**Limitações:** a aplicação permanece restrita até concluir os controles mínimos.
+**Limitações:** o ambiente atual usa HTTP/80 e deve ser tratado como ambiente de desenvolvimento.
 
 **Evolução futura:** executar checklist de publicação, registrar evidências e liberar acesso de forma controlada.

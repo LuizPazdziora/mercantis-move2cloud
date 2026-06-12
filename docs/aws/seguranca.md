@@ -1,6 +1,6 @@
 # Segurança
 
-Este documento descreve os controles de segurança recomendados para a arquitetura AWS de referência do Mercantis Move2Cloud. Nenhum recurso real foi criado nesta etapa.
+Este documento descreve os controles de segurança do ambiente AWS de desenvolvimento do Mercantis Move2Cloud e as recomendações de evolução para uma publicação mais robusta.
 
 ## Princípios
 
@@ -8,32 +8,33 @@ Este documento descreve os controles de segurança recomendados para a arquitetu
 - Separação de camadas por rede e Security Groups.
 - EC2 privada sem exposição direta à internet.
 - RDS privado, sem IP público.
-- HTTPS obrigatório antes de publicação pública.
+- O ambiente atual usa ALB público em HTTP/80 para validação do MVP.
+- HTTPS, domínio próprio e camada de borda devem ser tratados como evolução antes de uma publicação produtiva.
 - Credenciais fora do código-fonte e fora do GitHub.
 - Logs e métricas planejados com CloudWatch.
 
-## Camada de Borda
+## Camada de Borda Futura
 
-A camada de borda planejada inclui:
+A camada de borda abaixo não faz parte da implantação atual. Ela permanece planejada como evolução:
 
 - Amazon CloudFront para distribuição e entrada HTTPS.
 - AWS WAF para proteção contra ataques web comuns.
 - AWS Shield Standard para proteção básica contra DDoS.
 - AWS Certificate Manager para certificados TLS.
 
-Essa camada deve ser implantada antes de qualquer exposição pública real.
+Essa camada deve ser implantada antes de uma publicação produtiva com domínio próprio e HTTPS.
 
 ## Application Load Balancer
 
-O ALB é o ponto de entrada da aplicação dentro da VPC. Ele fica nas subnets públicas e recebe tráfego da camada de borda.
+O ALB é o ponto de entrada público atual da aplicação dentro da VPC. Ele fica nas subnets públicas e recebe tráfego HTTP/80 da internet.
 
 Regra esperada:
 
 ```text
-CloudFront / Internet -> HTTPS 443 -> SG-ALB
+Internet -> HTTP 80 -> SG-ALB
 ```
 
-O ALB encaminha tráfego apenas para a aplicação privada.
+O ALB encaminha tráfego apenas para a EC2 privada na porta 80.
 
 ## EC2 Privada
 
@@ -42,10 +43,10 @@ A EC2 da aplicação fica em subnet privada e não deve receber tráfego direto 
 Regra esperada:
 
 ```text
-SG-ALB -> TCP 80 ou 8080 -> SG-EC2-APP
+SG-ALB -> TCP 80 -> SG-EC2-APP
 ```
 
-SSH deve permanecer bloqueado ou fortemente restrito. A recomendação para acesso administrativo futuro é AWS Systems Manager Session Manager.
+SSH deve permanecer bloqueado. O acesso administrativo à EC2 privada deve ser feito por AWS Systems Manager Session Manager.
 
 ## RDS Privado
 
@@ -63,8 +64,8 @@ Não deve existir regra permitindo acesso à porta `3306` a partir de `0.0.0.0/0
 
 | Security Group | Entrada permitida | Saída permitida | Observação |
 | --- | --- | --- | --- |
-| `SG-ALB` | HTTPS `443` da camada de borda/CloudFront | HTTP `80` ou `8080` para `SG-EC2-APP` | Ponto de entrada da aplicação |
-| `SG-EC2-APP` | HTTP `80` ou `8080` somente do `SG-ALB` | `3306` para `SG-RDS`; `443` via NAT Gateway para atualizações e downloads | EC2 privada com containers |
+| `SG-ALB` | HTTP `80` da internet | HTTP `80` para `SG-EC2-APP` | Ponto de entrada atual da aplicação |
+| `SG-EC2-APP` | HTTP `80` somente do `SG-ALB` | `3306` para `SG-RDS`; `443` via NAT Gateway para atualizações e downloads | EC2 privada com containers |
 | `SG-RDS` | `3306` somente do `SG-EC2-APP` | Tráfego de resposta stateful | Banco privado, sem acesso público |
 
 Regras amplas ou não utilizadas devem ser removidas.
@@ -79,11 +80,11 @@ O arquivo `.env` é permitido apenas localmente e não deve ser versionado.
 
 ## Secrets Manager
 
-Secrets Manager é uma evolução recomendada para senhas e segredos. Ele não é obrigatório na versão local, mas deve ser considerado antes de qualquer implantação AWS com credenciais reais.
+Secrets Manager é uma evolução recomendada para senhas e segredos. No ambiente atual, a senha do RDS deve existir apenas no `dev.tfvars` local e no `.env` gerado internamente na EC2 pelo `user_data`.
 
 ## CORS
 
-Em produção, CORS deve ser restrito ao domínio oficial da aplicação. CORS aberto não deve ser usado em ambiente publicado.
+No ambiente AWS atual, o frontend e a API usam o mesmo domínio do ALB por meio do proxy `/api`, reduzindo dependência de CORS no navegador. Em produção, CORS deve ser restrito ao domínio oficial da aplicação.
 
 ## NAT Gateway
 
@@ -93,7 +94,7 @@ No MVP, um NAT Gateway pode reduzir custo e complexidade. Para alta disponibilid
 
 ## CloudWatch
 
-CloudWatch deve ser usado para logs, métricas e alarmes da aplicação, EC2, ALB, RDS e WAF.
+CloudWatch deve ser usado para logs, métricas e alarmes da aplicação, EC2, ALB e RDS. Métricas e logs de WAF entram apenas quando essa camada futura for implementada.
 
 ## Checklist de Riscos
 
@@ -107,5 +108,5 @@ CloudWatch deve ser usado para logs, métricas e alarmes da aplicação, EC2, AL
 - Credenciais reais no GitHub.
 - Ausência de backup do RDS.
 - Ausência de logs e métricas.
-- Falta de HTTPS antes da publicação.
+- Falta de HTTPS antes de uma publicação produtiva.
 - IAM Role com permissões administrativas amplas.

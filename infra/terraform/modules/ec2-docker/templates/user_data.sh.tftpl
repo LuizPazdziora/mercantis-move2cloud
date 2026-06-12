@@ -1,23 +1,45 @@
 #!/bin/bash
 set -euo pipefail
 
-dnf update -y
-dnf install -y curl git docker
+exec > >(tee -a /var/log/mercantis-user-data.log | logger -t mercantis-user-data -s 2>/dev/console) 2>&1
+trap 'echo "[Mercantis] Falha no user_data na linha $${LINENO}."' ERR
 
+echo "[Mercantis] Iniciando bootstrap da EC2."
+
+echo "[Mercantis] Atualizando pacotes..."
+dnf update -y
+
+echo "[Mercantis] Instalando pacotes base..."
+dnf install -y docker git
+
+echo "[Mercantis] Validando curl..."
+command -v curl
+curl --version
+
+echo "[Mercantis] Habilitando Docker..."
 systemctl enable --now docker
 usermod -aG docker ec2-user || true
 
+echo "[Mercantis] Docker instalado:"
+docker --version
+
+echo "[Mercantis] Instalando Docker Compose plugin..."
 if ! docker compose version >/dev/null 2>&1; then
-  mkdir -p /usr/local/lib/docker/cli-plugins
-  curl -SL "https://github.com/docker/compose/releases/download/v2.27.1/docker-compose-linux-x86_64" \
+  install -d /usr/local/lib/docker/cli-plugins
+  install -d /usr/libexec/docker/cli-plugins
+  curl -fSL "https://github.com/docker/compose/releases/download/v2.27.1/docker-compose-linux-x86_64" \
     -o /usr/local/lib/docker/cli-plugins/docker-compose
   chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+  ln -sf /usr/local/lib/docker/cli-plugins/docker-compose /usr/libexec/docker/cli-plugins/docker-compose
 fi
+docker compose version
 
+echo "[Mercantis] Clonando repositorio..."
 rm -rf /opt/mercantis-move2cloud
-git clone --branch "${repository_branch}" "${repository_url}" /opt/mercantis-move2cloud
+git clone --depth 1 --branch "${repository_branch}" "${repository_url}" /opt/mercantis-move2cloud
 cd /opt/mercantis-move2cloud
 
+echo "[Mercantis] Criando arquivo .env local da EC2..."
 cat > .env <<'ENVEOF'
 DB_HOST=${db_host}
 DB_PORT=${db_port}
@@ -26,35 +48,61 @@ DB_USER=${db_user}
 DB_PASSWORD=${db_password}
 ALLOWED_ORIGINS=${allowed_origins}
 ENVEOF
-
 chmod 600 .env
 
-export DB_HOST="${db_host}"
-export DB_PORT="${db_port}"
-export DB_NAME="${db_name}"
-export DB_USER="${db_user}"
-export DB_PASSWORD="${db_password}"
+read_env_var() {
+  awk -F= -v key="$1" '$1 == key { sub(/^[^=]*=/, ""); print; exit }' .env
+}
 
-for attempt in $(seq 1 30); do
+DB_HOST="$(read_env_var DB_HOST)"
+DB_PORT="$(read_env_var DB_PORT)"
+DB_NAME="$(read_env_var DB_NAME)"
+DB_USER="$(read_env_var DB_USER)"
+DB_PASSWORD="$(read_env_var DB_PASSWORD)"
+
+if [ -z "$DB_HOST" ] || [ -z "$DB_PORT" ] || [ -z "$DB_NAME" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ]; then
+  echo "[Mercantis] Variaveis obrigatorias de banco nao foram preenchidas." >&2
+  exit 1
+fi
+
+case "$(printf '%s' "$DB_PASSWORD" | tr '[:upper:]' '[:lower:]')" in
+  ""|"change_me"|"password"|"senha")
+    echo "[Mercantis] DB_PASSWORD esta vazio ou com valor reservado. Atualize dev.tfvars local antes de recriar a EC2." >&2
+    exit 1
+    ;;
+esac
+
+if echo "$DB_HOST" | grep -q ':'; then
+  echo "[Mercantis] DB_HOST deve conter apenas o host do RDS, sem porta." >&2
+  exit 1
+fi
+
+echo "[Mercantis] Baixando imagem cliente MariaDB..."
+docker pull mariadb:11.4
+
+echo "[Mercantis] Aguardando RDS MariaDB responder..."
+for attempt in $(seq 1 60); do
+  echo "[Mercantis] Tentativa $${attempt}/60 de conexao com RDS..."
   if docker run --rm --network host \
     -e MYSQL_PWD="$DB_PASSWORD" \
     -e DB_HOST="$DB_HOST" \
     -e DB_PORT="$DB_PORT" \
     -e DB_USER="$DB_USER" \
-    -e DB_NAME="$DB_NAME" \
     mariadb:11.4 \
-    mariadb-admin ping -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" --silent; then
+    mariadb-admin --connect-timeout=5 ping -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" --silent; then
+    echo "[Mercantis] RDS MariaDB disponivel."
     break
   fi
 
-  if [ "$attempt" -eq 30 ]; then
-    echo "RDS MariaDB nao respondeu dentro do tempo esperado." >&2
+  if [ "$attempt" -eq 60 ]; then
+    echo "[Mercantis] RDS MariaDB nao respondeu dentro do tempo esperado." >&2
     exit 1
   fi
 
   sleep 10
 done
 
+echo "[Mercantis] Executando init.sql..."
 docker run --rm --network host \
   -e MYSQL_PWD="$DB_PASSWORD" \
   -e DB_HOST="$DB_HOST" \
@@ -65,6 +113,7 @@ docker run --rm --network host \
   mariadb:11.4 \
   sh -c 'mariadb -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" "$DB_NAME" < /sql/init.sql'
 
+echo "[Mercantis] Executando seed.sql..."
 docker run --rm --network host \
   -e MYSQL_PWD="$DB_PASSWORD" \
   -e DB_HOST="$DB_HOST" \
@@ -75,4 +124,13 @@ docker run --rm --network host \
   mariadb:11.4 \
   sh -c 'mariadb -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" "$DB_NAME" < /sql/seed.sql'
 
+echo "[Mercantis] Validando docker-compose.aws.yml..."
+docker compose -f docker-compose.aws.yml config
+
+echo "[Mercantis] Subindo containers..."
 docker compose -f docker-compose.aws.yml up -d --build
+
+echo "[Mercantis] Containers em execucao..."
+docker compose -f docker-compose.aws.yml ps
+
+echo "[Mercantis] Bootstrap concluido."

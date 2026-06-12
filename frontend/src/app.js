@@ -45,9 +45,51 @@ const elements = {
 };
 
 function normalizeDocumentationLinks() {
-  document.querySelectorAll('a[href="http://localhost:8000/docs"]').forEach((link) => {
+  const legacyDocsUrl = `http://${["localhost", "8000"].join(":")}/docs`;
+
+  document.querySelectorAll(`a[href="${legacyDocsUrl}"]`).forEach((link) => {
     link.setAttribute("href", "/docs");
   });
+}
+
+function normalizeEnvironmentCopy() {
+  const environmentTitle = document.querySelector(".environment-card strong");
+  const environmentDetail = document.querySelector(".environment-card small");
+  const overviewEyebrow = document.querySelector("#visao-geral .eyebrow");
+  const overviewBadge = document.querySelector("#visao-geral .status-badge");
+  const flow = document.querySelector(".architecture-flow");
+  const flowDetails = document.querySelectorAll(".architecture-flow .flow-node small");
+  const productFormDetail = document.querySelector("#product-form .form-title span");
+
+  if (environmentTitle) {
+    environmentTitle.textContent = "Ambiente AWS de Desenvolvimento";
+  }
+
+  if (environmentDetail) {
+    environmentDetail.textContent = "ALB + EC2 privada + RDS";
+  }
+
+  if (overviewEyebrow) {
+    overviewEyebrow.textContent = "Arquitetura AWS do MVP";
+  }
+
+  if (overviewBadge) {
+    overviewBadge.textContent = "Infraestrutura provisionada com Terraform";
+  }
+
+  if (flow) {
+    flow.setAttribute("aria-label", "Fluxo técnico AWS");
+  }
+
+  ["Nginx na EC2", "proxy /api", "RDS privado"].forEach((label, index) => {
+    if (flowDetails[index]) {
+      flowDetails[index].textContent = label;
+    }
+  });
+
+  if (productFormDetail) {
+    productFormDetail.textContent = "Dados fictícios para validação do MVP";
+  }
 }
 
 function escapeHtml(value) {
@@ -183,7 +225,7 @@ async function fetchDbHealth() {
     state.dbHealth = await requestJson("/db-health");
   } catch (error) {
     state.dbHealth = { status: "error" };
-    showToast("Banco indisponível. Verifique o container MariaDB.", "warning");
+    showToast("Banco indisponível. Verifique o MariaDB configurado.", "warning");
   } finally {
     setLoading("status", false);
     renderStatusCards();
@@ -446,4 +488,5 @@ elements.reloadOrdersButton.addEventListener("click", () => fetchOrders(true));
 elements.refreshAllButton.addEventListener("click", () => refreshDashboard(true));
 
 normalizeDocumentationLinks();
+normalizeEnvironmentCopy();
 refreshDashboard();

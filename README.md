@@ -1,10 +1,22 @@
 # Mercantis Move2Cloud
 
-O Mercantis Move2Cloud é um MVP de aplicação web containerizada para validar uma base técnica de migração para AWS. O projeto usa a estratégia de replatform com refactor parcial: a aplicação é organizada em containers e o banco de produção é planejado como Amazon RDS for MariaDB em subnet privada.
+O Mercantis Move2Cloud é um MVP de aplicação web containerizada para validar uma base técnica de migração para AWS. O projeto usa a estratégia de replatform com refactor parcial: a aplicação é organizada em containers e o ambiente AWS de desenvolvimento utiliza Application Load Balancer público, EC2 privada com Docker Compose e Amazon RDS for MariaDB em subnets privadas.
 
-O ambiente atual é local, executado com Docker Compose, e não cria recursos reais na AWS.
+O projeto mantém dois modos de execução: local com Docker Compose e AWS provisionado com Terraform.
 
 ## Status Atual do MVP
+
+Ambiente AWS de desenvolvimento:
+
+- Frontend publicado via Application Load Balancer HTTP/80.
+- EC2 privada executando `docker-compose.aws.yml` com containers `frontend` e `backend`.
+- Frontend servido por Nginx.
+- Backend FastAPI acessado via proxy `/api`.
+- Amazon RDS for MariaDB privado, sem IP público.
+- Swagger acessível pelo ALB em `/docs`.
+- Endpoints validados: `/api/health`, `/api/db-health` e `/api/products`.
+
+Execução local:
 
 - Frontend funcional em `http://localhost:8080`.
 - Backend FastAPI em `http://localhost:8000`.
@@ -25,6 +37,19 @@ Navegador
 
 O frontend não acessa o banco diretamente. A comunicação com o MariaDB é feita somente pelo backend usando o host interno `database` e a porta `3306`.
 
+## Arquitetura AWS de Desenvolvimento
+
+```text
+Usuário
+-> Application Load Balancer público HTTP/80
+-> EC2 privada executando Docker Compose
+-> Frontend Nginx
+-> Backend FastAPI via /api
+-> Amazon RDS for MariaDB privado
+```
+
+Na AWS, o banco não roda em container. O `docker-compose.aws.yml` sobe apenas frontend e backend. O acesso administrativo à EC2 deve ser feito por AWS Systems Manager Session Manager.
+
 ## Tecnologias
 
 - HTML, CSS e JavaScript puro no frontend.
@@ -32,8 +57,10 @@ O frontend não acessa o banco diretamente. A comunicação com o MariaDB é fei
 - Python com FastAPI no backend.
 - SQLAlchemy e PyMySQL para acesso ao banco.
 - Pydantic para validação de entrada e saída.
-- MariaDB como banco local.
-- Docker Compose para orquestração local.
+- MariaDB em container para execução local.
+- Amazon RDS for MariaDB privado para execução AWS.
+- Docker Compose para orquestração local e para containers da aplicação na EC2.
+- Terraform para provisionamento da infraestrutura AWS de desenvolvimento.
 
 ## Estrutura de Pastas
 
@@ -135,35 +162,37 @@ O backend permite por padrão a origem local:
 http://localhost:8080
 ```
 
-Em uma implantação futura na AWS, as origens CORS devem ser restritas aos domínios autorizados.
+No ambiente AWS atual, o frontend acessa o backend pelo mesmo domínio do ALB usando `/api`. Em uma evolução de produção, as origens CORS devem ser restritas aos domínios autorizados.
 
-## Arquitetura AWS de Referência
+## Arquitetura AWS Atual e Evolução
 
-A arquitetura AWS de referência foi atualizada para refletir o diagrama "Mercantis Move2Cloud - Infraestrutura AWS do MVP". Nenhum recurso real foi criado na AWS nesta etapa, a aplicação não foi publicada online e não foram geradas credenciais reais.
+A arquitetura AWS atual foi provisionada com Terraform para o MVP de desenvolvimento. O ponto de entrada é um Application Load Balancer público em HTTP/80, encaminhando para uma EC2 privada com Docker Compose. O banco é Amazon RDS for MariaDB privado.
 
-Fluxo oficial da arquitetura AWS de referência:
+Fluxo atual:
 
 ```text
 Usuários
--> HTTPS 443
--> Amazon CloudFront / AWS WAF / AWS Shield Standard / ACM
 -> Application Load Balancer público em subnets públicas
 -> EC2 em subnet privada de aplicação executando containers Docker
 -> Amazon RDS for MariaDB em subnet privada de banco
 ```
 
-Principais componentes documentados:
+Componentes atuais:
 
-- CloudFront, AWS WAF, AWS Shield Standard e ACM na camada de borda.
 - Application Load Balancer público como ponto de entrada da camada de aplicação.
 - EC2 privada executando `frontend-container` e `backend-api-container`, sem tráfego direto da internet.
 - RDS MariaDB privado, sem IP público e acessível somente pela aplicação.
 - NAT Gateway para saída controlada da EC2 privada.
+- AWS Systems Manager Session Manager para acesso administrativo à EC2.
+
+Evolução futura:
+
+- CloudFront, AWS WAF, AWS Shield Standard e ACM na camada de borda.
 - CloudWatch para logs, métricas e alarmes.
 - Secrets Manager como evolução recomendada para segredos.
 - S3 como serviço auxiliar/opcional para artefatos, backups exportados ou arquivos estáticos futuros.
 
-A aplicação local continua usando Docker Compose. A referência AWS usa EC2 privada com Docker e RDS gerenciado.
+A execução local continua usando Docker Compose com MariaDB em container. A execução AWS usa EC2 privada com Docker Compose e RDS gerenciado.
 
 ## Infraestrutura Como Código com Terraform
 
@@ -212,15 +241,13 @@ O `apply` cria recursos reais e pode gerar cobrança na AWS. Ele deve ser execut
 - [Diagrama AWS de referência](docs/arquitetura/diagrama-aws-referencia.md)
 - [Terraform](infra/terraform/README.md)
 
-## Restrições Atuais
+## Cuidados Operacionais
 
-- Não criar recursos reais na AWS.
-- Não executar AWS CLI nesta etapa.
-- Não executar `terraform apply` ou criar recursos reais sem liberação explícita.
-- Não criar CloudFormation nesta etapa.
-- Não publicar a aplicação online sem liberação explícita.
-- Não versionar `.env`.
-- Não usar credenciais reais.
+- A infraestrutura AWS gera custos enquanto estiver ativa.
+- Não versionar `.env`, `dev.tfvars`, credenciais AWS, senhas ou tokens.
+- Não colocar senha real em README, documentação, commits ou arquivos `*.example`.
+- O arquivo `dev.tfvars` deve existir apenas localmente.
+- Para encerrar o ambiente AWS após a validação, usar `terraform destroy -var-file="dev.tfvars"` a partir de `infra/terraform/envs/dev`.
 - Não usar dados reais de clientes.
 - Não adicionar autenticação, pagamento, logística, antifraude ou integrações externas nesta etapa.
 
@@ -231,4 +258,4 @@ O `apply` cria recursos reais e pode gerar cobrança na AWS. Ele deve ser execut
 - Consolidar evidências de execução local.
 - Revisar documentação final.
 - Preparar apresentação técnica do MVP.
-- Planejar implantação controlada em AWS apenas após liberação.
+- Consolidar evidências da implantação AWS funcional.

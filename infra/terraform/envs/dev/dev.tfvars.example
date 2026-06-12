@@ -29,6 +29,9 @@ health_check_path = "/"
 
 db_name     = "mercantis"
 db_username = "mercantisapp"
+
+# Este arquivo e apenas exemplo. Copie para dev.tfvars e substitua o valor abaixo
+# somente no arquivo local, sem enviar a senha real ao GitHub.
 db_password = "ALTERE_ESTA_SENHA_FORA_DO_GIT"
 db_port     = 3306
 
@@ -45,7 +48,7 @@ ec2_key_name           = null
 ec2_root_volume_size   = 20
 repository_url         = "https://github.com/LuizPazdziora/mercantis-move2cloud"
 repository_branch      = "main"
-allowed_origins        = "http://localhost"
+allowed_origins        = "*"
 
 common_tags = {
   Project   = "Mercantis Move2Cloud"

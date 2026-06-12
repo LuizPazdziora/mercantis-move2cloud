@@ -1,195 +1,141 @@
-# Arquitetura AWS de Referência
+# Arquitetura AWS do MVP
 
-Este documento descreve a arquitetura AWS de referência do Mercantis Move2Cloud alinhada ao diagrama "Mercantis Move2Cloud - Infraestrutura AWS do MVP". A arquitetura é documental nesta etapa: nenhum recurso real foi criado na AWS, nenhum ambiente foi publicado e nenhuma credencial real deve ser usada.
+Este documento descreve a arquitetura AWS de desenvolvimento do Mercantis Move2Cloud. O ambiente atual foi provisionado com Terraform e mantém a estratégia de replatform com refactor parcial: a aplicação continua containerizada, o banco local em container é substituído por Amazon RDS for MariaDB privado e o acesso público ocorre pelo Application Load Balancer.
 
 ## Visão Geral
 
-O MVP local continua funcionando com Docker Compose no fluxo `Frontend -> Backend FastAPI -> MariaDB`. A arquitetura AWS de referência mantém a aplicação containerizada, mas substitui o banco local por Amazon RDS for MariaDB e coloca a execução dos containers em uma EC2 privada atrás de uma camada pública controlada.
-
-Fluxo principal documentado:
+Fluxo atual da aplicação na AWS:
 
 ```text
 Usuários
--> HTTPS 443
--> Amazon CloudFront / AWS WAF / AWS Shield Standard / ACM
--> Application Load Balancer público em subnets públicas
--> EC2 privada com Docker
--> frontend-container e backend-api-container
--> Amazon RDS for MariaDB em subnet privada de banco
+-> Application Load Balancer público HTTP/80
+-> EC2 privada executando Docker Compose
+-> frontend-container com Nginx
+-> backend-api-container FastAPI via proxy /api
+-> Amazon RDS for MariaDB em subnets privadas
 ```
+
+O professor acessa o frontend pelo DNS público do ALB. O navegador não chama `localhost`; o frontend usa caminhos relativos, como `/api/health`, `/api/db-health`, `/api/products`, `/api/orders` e `/docs`.
 
 ## Objetivos
 
 - Manter a estratégia de replatform com refactor parcial.
-- Usar EC2 privada como host Docker para frontend e backend.
+- Publicar o frontend por ALB público em HTTP/80.
+- Executar frontend e backend em containers Docker dentro de uma EC2 privada.
 - Usar Amazon RDS for MariaDB como banco gerenciado privado.
 - Evitar exposição direta da EC2 e do RDS à internet.
-- Definir uma camada de borda com CloudFront, WAF, Shield Standard e ACM.
-- Preparar expansão futura para alta disponibilidade em múltiplas zonas.
-- Documentar controles de segurança, observabilidade, backup e rollback.
+- Usar AWS Systems Manager Session Manager para acesso administrativo à EC2.
+- Preservar suporte ao ambiente local com Docker Compose.
+- Manter CloudFront, WAF, ACM, Route 53, Auto Scaling e RDS Multi-AZ como evolução futura.
 
 ## Relação Entre Ambiente Local e AWS
 
-| Camada | Ambiente local | Referência AWS |
+| Camada | Execução local | Ambiente AWS de desenvolvimento |
 | --- | --- | --- |
-| Entrada | Navegador em `localhost` | CloudFront, WAF, Shield Standard, ACM e ALB |
-| Frontend | Container Nginx em `localhost:8080` | `frontend-container` em EC2 privada |
-| Backend | FastAPI em `localhost:8000` | `backend-api-container` em EC2 privada |
-| Banco | MariaDB em container Docker | Amazon RDS for MariaDB em subnet privada de banco |
-| Rede | Rede interna do Docker Compose | VPC `10.0.0.0/16` com subnets públicas e privadas |
+| Entrada | Navegador em `localhost:8080` | DNS público do Application Load Balancer em HTTP/80 |
+| Frontend | Container Nginx em `localhost:8080` | `frontend-container` em EC2 privada, publicado pelo ALB |
+| Backend | FastAPI em `localhost:8000` | `backend-api-container` acessado pelo Nginx via `/api` |
+| Banco | MariaDB em container Docker, host local `3307` | Amazon RDS for MariaDB privado na porta `3306` |
+| Rede | Rede interna do Docker Compose | VPC `10.0.0.0/16` com subnets públicas, privadas de aplicação e privadas de banco |
 | Saída da aplicação | Host local | NAT Gateway para saída controlada da EC2 privada |
-| Segredos | `.env` local não versionado | Evolução para AWS Secrets Manager |
-| Logs e métricas | Logs locais dos containers | Amazon CloudWatch |
+| Segredos | `.env` local não versionado | `dev.tfvars` local e `.env` gerado internamente na EC2 via `user_data` |
+| Acesso administrativo | Terminal local | AWS Systems Manager Session Manager |
 
-## Componentes da Arquitetura
-
-### Camada de Borda
-
-CloudFront, AWS WAF, AWS Shield Standard e AWS Certificate Manager formam a camada de borda planejada para publicação controlada.
-
-- **CloudFront:** distribui o tráfego HTTPS e permite evolução para CDN.
-- **AWS WAF:** protege contra padrões comuns de ataques web.
-- **AWS Shield Standard:** fornece proteção básica contra DDoS sem configuração adicional.
-- **ACM:** gerencia certificados TLS para HTTPS.
-
-Essa camada deve ser usada antes de qualquer exposição pública real.
+## Componentes Atuais
 
 ### Application Load Balancer
 
-O ALB é o ponto de entrada público da camada de aplicação. Ele fica nas subnets públicas e recebe tráfego HTTPS 443 da camada de borda. Em seguida, encaminha o tráfego para a EC2 privada pela porta interna definida para os containers, como `80` ou `8080`.
+O ALB é o ponto público do ambiente de desenvolvimento. Ele recebe HTTP/80 nas subnets públicas e encaminha o tráfego para a EC2 privada na porta 80.
 
-A EC2 não fica em subnet pública e não recebe tráfego direto da internet.
+O Target Group valida a aplicação pelo caminho `/`, servido pelo Nginx do frontend.
 
-### VPC
+### EC2 Privada com Docker Compose
 
-A VPC `10.0.0.0/16` isola os recursos do projeto. Ela separa subnets públicas, subnets privadas de aplicação e subnets privadas de banco.
+A EC2 fica em subnet privada de aplicação, não recebe IP público e executa o `docker-compose.aws.yml` com apenas dois serviços:
 
-### Subnets Públicas
+- `frontend`: Nginx servindo a interface na porta 80.
+- `backend`: API FastAPI acessível somente na rede Docker interna.
 
-As subnets públicas hospedam componentes que precisam de rota pública controlada:
+O container `database` não é usado na AWS.
 
-- Application Load Balancer.
-- NAT Gateway.
-- Integração com Internet Gateway.
+### Nginx do Frontend
 
-CIDRs sugeridos:
+O Nginx serve os arquivos estáticos do frontend em `/` e faz proxy para o backend nos caminhos:
 
-- `10.0.1.0/24`
-- `10.0.2.0/24`
+- `/api/*`
+- `/health`
+- `/db-health`
+- `/docs`
+- `/openapi.json`
 
-### Subnets Privadas de Aplicação
+Com isso, o navegador usa o mesmo domínio do ALB para frontend, API e Swagger.
 
-As subnets privadas de aplicação hospedam a EC2 com Docker. A primeira zona pode executar o MVP, enquanto a segunda fica reservada para expansão futura.
+### Backend FastAPI
 
-A EC2 da arquitetura oficial deve permanecer nessas subnets privadas, atrás do ALB.
+O backend executa como container privado na EC2 e se conecta ao RDS pelo endpoint privado informado no `.env` gerado pelo `user_data`.
 
-CIDRs sugeridos:
+Endpoints validados no ambiente AWS:
 
-- `10.0.11.0/24`
-- `10.0.12.0/24`
-
-### Subnets Privadas de Banco
-
-As subnets privadas de banco hospedam o Amazon RDS for MariaDB por meio de um DB Subnet Group.
-
-CIDRs sugeridos:
-
-- `10.0.21.0/24`
-- `10.0.22.0/24`
-
-O RDS não deve ter IP público.
-
-### Internet Gateway
-
-O Internet Gateway atende a camada pública da VPC. Ele deve ser associado apenas às rotas das subnets públicas.
-
-### NAT Gateway
-
-O NAT Gateway permite que a EC2 privada faça saída controlada para atualizações, downloads e integrações necessárias, sem receber conexões diretas da internet.
-
-No MVP, um NAT Gateway pode ser suficiente para reduzir custo e complexidade. Em produção com alta disponibilidade, a recomendação é usar um NAT Gateway por zona de disponibilidade.
-
-### EC2 Privada com Docker
-
-A EC2 fica em subnet privada de aplicação e executa os containers:
-
-- `frontend-container`
-- `backend-api-container`
-
-O container `database` não deve fazer parte da arquitetura AWS final. O banco deve ser Amazon RDS for MariaDB.
-
-### Docker
-
-Docker mantém a estratégia de empacotamento validada no ambiente local. Na referência AWS, ele é executado na EC2 privada e hospeda apenas os containers da aplicação. A orquestração local com Docker Compose continua válida para desenvolvimento, mas a arquitetura AWS substitui o banco em container pelo RDS gerenciado.
-
-### Frontend Containerizado
-
-O `frontend-container` representa a interface web servida por Nginx. Ele fica na EC2 privada e recebe tráfego encaminhado pelo ALB, sem exposição direta à internet.
-
-### Backend FastAPI Containerizado
-
-O `backend-api-container` executa a API FastAPI. Ele acessa o RDS MariaDB pelo endpoint privado do banco, usando a porta `3306`, e deve receber configurações por variáveis de ambiente ou, em evolução, por mecanismo seguro de segredos.
+- `/api/health`
+- `/api/db-health`
+- `/api/products`
+- `/api/orders`
 
 ### Amazon RDS for MariaDB
 
-O RDS fica em subnet privada de banco, com `Public accessibility` desativado. A porta `3306` deve ser permitida somente a partir do Security Group da aplicação.
+O RDS fica em subnets privadas de banco, sem IP público e com acesso restrito ao Security Group da aplicação na porta `3306`.
 
-O RDS não fica público e não deve aceitar conexões diretamente da internet.
+### VPC, Subnets e NAT Gateway
+
+A VPC separa:
+
+- Subnets públicas para ALB, Internet Gateway e NAT Gateway.
+- Subnets privadas de aplicação para EC2.
+- Subnets privadas de banco para RDS.
+
+O NAT Gateway permite que a EC2 privada baixe pacotes, clone o repositório e baixe imagens Docker sem receber conexões iniciadas pela internet.
 
 ### Security Groups
 
-Os Security Groups segmentam a comunicação entre camadas:
+Os Security Groups segmentam a comunicação:
 
-- `SG-ALB`: recebe HTTPS 443 da camada de borda.
-- `SG-EC2-APP`: recebe `80` ou `8080` somente do `SG-ALB`.
-- `SG-RDS`: recebe `3306` somente do `SG-EC2-APP`.
+- `SG-ALB`: recebe HTTP/80 da internet.
+- `SG-EC2-APP`: recebe porta 80 somente do `SG-ALB`.
+- `SG-RDS`: recebe porta 3306 somente do `SG-EC2-APP`.
 
-SSH deve permanecer bloqueado ou fortemente restrito. A evolução recomendada para acesso administrativo é AWS Systems Manager Session Manager.
+SSH não é aberto por padrão. O acesso administrativo deve ocorrer por Session Manager.
 
 ### IAM Role
 
-A EC2 deve usar IAM Role. Não devem existir access keys fixas dentro da instância, no repositório ou em imagens Docker.
+A EC2 usa IAM Role e Instance Profile. Access keys fixas não devem ser gravadas na instância, no repositório ou em imagens Docker.
 
-### CloudWatch
+## Componentes de Evolução Futura
 
-CloudWatch é o serviço recomendado para logs, métricas e alarmes da EC2, containers, ALB, RDS e WAF.
+Os itens abaixo não fazem parte da implantação AWS atual e devem ser tratados como evolução:
 
-### Secrets Manager
+- CloudFront para CDN e borda global.
+- AWS WAF para regras de proteção web.
+- AWS Shield Standard como proteção DDoS gerenciada.
+- AWS Certificate Manager e HTTPS.
+- Route 53 e domínio próprio.
+- AWS Secrets Manager ou SSM Parameter Store para gestão de segredos.
+- CloudWatch com dashboards, métricas e alarmes detalhados.
+- Auto Scaling Group para múltiplas EC2.
+- RDS Multi-AZ para maior disponibilidade.
+- S3 para artefatos, evidências, exportações ou arquivos estáticos futuros.
 
-Secrets Manager é uma evolução recomendada para segredos, como senha do banco. Ele não é obrigatório para a versão local e não deve ser confundido com `.env` de desenvolvimento.
+## Limitações e Cuidados Operacionais
 
-### Amazon S3
+- O ALB atual usa HTTP/80, não HTTPS.
+- A EC2 privada roda uma implantação simples com Docker Compose.
+- A segunda zona de aplicação fica preparada para expansão, mas não implica alta disponibilidade completa.
+- Um único NAT Gateway reduz complexidade e custo, mas não oferece resiliência por zona.
+- A infraestrutura AWS gera custos enquanto estiver ativa.
+- O arquivo `dev.tfvars` deve existir apenas localmente e nunca ser versionado.
+- Senhas reais, access keys, secret keys e tokens não devem aparecer em commits, documentação ou arquivos de exemplo.
 
-S3 é um componente auxiliar e opcional para evolução futura, podendo ser usado para artefatos, arquivos estáticos ou backups exportados. Ele não é dependência obrigatória do MVP.
+Para encerrar o ambiente após a validação, execute manualmente, a partir de `infra/terraform/envs/dev`:
 
-## Justificativas Técnicas
-
-### EC2 privada atrás de ALB
-
-Essa escolha reduz exposição direta da aplicação e mantém a simplicidade operacional do MVP. O ALB concentra a entrada pública, enquanto a EC2 recebe tráfego apenas da camada autorizada.
-
-### RDS privado
-
-O banco não deve ser acessível pela internet. O RDS privado reduz superfície de ataque e mantém o backend como única camada autorizada a consultar dados.
-
-### Camada de borda
-
-CloudFront, WAF, Shield Standard e ACM criam uma base para publicação HTTPS controlada, proteção contra ataques comuns e gestão de certificado.
-
-## Limitações do MVP
-
-- A segunda zona de disponibilidade é documentada como expansão futura.
-- O desenho não promete alta disponibilidade completa na primeira implantação.
-- Um único NAT Gateway reduz custo, mas não oferece resiliência por zona.
-- ECS/Fargate e Kubernetes não fazem parte da etapa atual.
-- A publicação pública depende de aprovação, HTTPS, CORS revisado, logs, backup e checklist de segurança.
-
-## Evoluções Futuras
-
-- Ativar múltiplas instâncias EC2 em subnets privadas diferentes.
-- Usar Auto Scaling Group atrás do ALB.
-- Migrar para ECS/Fargate se a operação justificar.
-- Habilitar Multi-AZ no RDS.
-- Usar Secrets Manager para segredos com rotação planejada.
-- Consolidar dashboards e alarmes no CloudWatch.
-- Exportar artefatos e evidências para S3, se necessário.
+```bash
+terraform destroy -var-file="dev.tfvars"
+```

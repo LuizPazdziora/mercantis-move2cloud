@@ -22,15 +22,15 @@
           <a href="#visao-geral" class="nav-link">Visão geral</a>
           <a href="#produtos" class="nav-link">Produtos</a>
           <a href="#pedidos" class="nav-link">Pedidos</a>
-          <a href="http://localhost:8000/docs" class="nav-link" target="_blank" rel="noreferrer">
+          <a href="/docs" class="nav-link" target="_blank" rel="noreferrer">
             Swagger
           </a>
         </nav>
 
         <div class="environment-card">
           <span class="environment-label">Ambiente</span>
-          <strong>Desenvolvimento Local</strong>
-          <small>Docker Compose</small>
+          <strong>Ambiente AWS de Desenvolvimento</strong>
+          <small>ALB público + EC2 privada + RDS MariaDB privado</small>
         </div>
       </aside>
 
@@ -40,11 +40,11 @@
             <p class="eyebrow">MVP técnico em containers</p>
             <h1>Mercantis Move2Cloud</h1>
             <p class="subtitle">
-              MVP de aplicação web containerizada preparada para evolução em arquitetura AWS.
+              MVP de aplicação web containerizada em execução na AWS com ALB, EC2 privada e RDS MariaDB privado.
             </p>
           </div>
           <div class="hero-actions">
-            <a class="link-button" href="http://localhost:8000/docs" target="_blank" rel="noreferrer">
+            <a class="link-button" href="/docs" target="_blank" rel="noreferrer">
               Abrir Swagger
             </a>
             <button class="primary-button" id="refresh-all-button" type="button">
@@ -112,29 +112,29 @@
         <section class="overview-panel" id="visao-geral" aria-labelledby="overview-title">
           <div class="section-header">
             <div>
-              <p class="eyebrow">Arquitetura local</p>
+              <p class="eyebrow">Arquitetura AWS do MVP</p>
               <h2 id="overview-title">Visão Geral do MVP</h2>
             </div>
-            <span class="status-badge status-badge-neutral">Sem recursos AWS reais</span>
+            <span class="status-badge status-badge-neutral">Infraestrutura provisionada com Terraform</span>
           </div>
 
-          <div class="architecture-flow" aria-label="Fluxo técnico local">
+          <div class="architecture-flow" aria-label="Fluxo técnico AWS">
             <div class="flow-node">
               <span class="node-icon">FE</span>
-              <strong>Frontend</strong>
-              <small>localhost:8080</small>
+              <strong>Frontend Nginx</strong>
+              <small>na EC2 privada</small>
             </div>
             <span class="flow-arrow" aria-hidden="true">→</span>
             <div class="flow-node">
               <span class="node-icon">API</span>
               <strong>Backend FastAPI</strong>
-              <small>localhost:8000</small>
+              <small>via proxy /api</small>
             </div>
             <span class="flow-arrow" aria-hidden="true">→</span>
             <div class="flow-node">
               <span class="node-icon">DB</span>
-              <strong>MariaDB</strong>
-              <small>local 3307 / interno 3306</small>
+              <strong>Amazon RDS for MariaDB</strong>
+              <small>privado</small>
             </div>
           </div>
         </section>
@@ -169,7 +169,7 @@
             <form class="form-card" id="product-form">
               <div class="form-title">
                 <strong>Cadastrar produto</strong>
-                <span>Dados fictícios para validação local</span>
+                <span>Dados fictícios para validação do MVP</span>
               </div>
               <div class="form-grid">
                 <label class="field">

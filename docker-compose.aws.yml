@@ -23,7 +23,7 @@ services:
       DB_NAME: ${DB_NAME:?Defina DB_NAME}
       DB_USER: ${DB_USER:?Defina DB_USER}
       DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
     expose:
       - "8000"
     networks:

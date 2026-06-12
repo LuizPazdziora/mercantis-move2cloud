@@ -1,15 +1,16 @@
 # Plano de Implantação AWS
 
-Este plano descreve uma referência documental para futura implantação controlada do Mercantis Move2Cloud na AWS. Nenhum comando AWS CLI, Terraform ou CloudFormation deve ser executado nesta etapa.
+Este plano descreve o fluxo operacional do ambiente AWS de desenvolvimento do Mercantis Move2Cloud e os controles que devem ser mantidos para evolução. A infraestrutura atual é provisionada por Terraform, com ALB público, EC2 privada com Docker Compose e Amazon RDS for MariaDB privado.
 
 ## Premissas
 
 - A aplicação local continua usando Docker Compose.
-- A referência AWS usa EC2 privada com Docker para frontend e backend.
+- O ambiente AWS usa EC2 privada com Docker Compose para frontend e backend.
 - O banco em AWS é Amazon RDS for MariaDB em subnet privada de banco.
-- O acesso externo ocorre pela camada de borda e pelo Application Load Balancer.
+- O acesso externo atual ocorre pelo Application Load Balancer público em HTTP/80.
 - A EC2 não recebe tráfego direto da internet.
-- Nenhum recurso deve ficar público sem validação e aprovação.
+- RDS e EC2 não devem ficar públicos.
+- CloudFront, WAF, ACM, HTTPS e Route 53 permanecem como evolução futura.
 
 ## Plano Operacional
 
@@ -29,7 +30,7 @@ Este plano descreve uma referência documental para futura implantação control
 | 12. Configurar variáveis para RDS | Conectar backend ao banco | Definir `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` fora do Git | Backend preparado para RDS | Segredo exposto | Revisar origem das variáveis |
 | 13. Executar containers | Subir aplicação | Executar `frontend-container` e `backend-api-container` | Aplicação ativa na EC2 | Usar container de banco na AWS | Validar containers e logs |
 | 14. Configurar ALB | Publicar entrada da aplicação | Criar listeners e target group para EC2 privada | ALB encaminhando para aplicação | Health check incorreto | Validar target healthy |
-| 15. Configurar CloudFront/WAF/ACM | Preparar borda segura | Associar HTTPS, regras WAF e distribuição | Entrada pública protegida | Certificado ou regra incorreta | Validar HTTPS e regras WAF |
+| 15. Configurar CloudFront/WAF/ACM | Evolução futura de borda segura | Associar HTTPS, regras WAF e distribuição quando aprovado | Entrada pública protegida | Certificado ou regra incorreta | Validar HTTPS e regras WAF |
 | 16. Validar ALB -> EC2 -> RDS | Confirmar fluxo fim a fim | Testar acesso externo e conexão ao banco | Aplicação responde com banco privado | Falha de rota ou SG | Validar frontend, API e `/db-health` |
 | 17. Validar logs e métricas | Garantir rastreabilidade | Conferir CloudWatch para aplicação e infraestrutura | Evidências disponíveis | Falha sem diagnóstico | Revisar logs, métricas e alarmes |
 | 18. Aplicar checklist de segurança | Reduzir risco antes de liberação | Executar `docs/aws/checklist-aws.md` | Riscos críticos tratados | Publicação insegura | Registrar evidências |
@@ -43,6 +44,6 @@ Este plano descreve uma referência documental para futura implantação control
 - RDS em subnet privada e sem IP público.
 - ALB em subnets públicas.
 - Porta `3306` permitida somente da aplicação para o RDS.
-- HTTPS planejado e certificado definido.
-- CORS restrito ao domínio correto.
+- HTTPS, certificado e domínio próprio planejados para evolução futura.
+- CORS restrito ao domínio correto antes de uma publicação produtiva.
 - Logs, métricas, backup e rollback documentados.

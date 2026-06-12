@@ -1,123 +1,124 @@
 # Validação AWS
 
-Este documento descreve validações futuras para a arquitetura AWS de referência do Mercantis Move2Cloud. Ele não executa recursos reais e não substitui evidências obtidas em uma implantação aprovada.
+Este documento descreve a validação esperada para o ambiente AWS de desenvolvimento do Mercantis Move2Cloud, provisionado com Terraform.
 
-## Validação de VPC
+## Arquitetura Validada
 
-- Confirmar VPC `10.0.0.0/16`.
-- Confirmar região `sa-east-1`.
-- Confirmar separação entre subnets públicas, privadas de aplicação e privadas de banco.
+```text
+Usuário
+-> Application Load Balancer público HTTP/80
+-> EC2 privada executando Docker Compose
+-> Frontend Nginx
+-> Backend FastAPI via proxy /api
+-> Amazon RDS for MariaDB privado
+```
 
-Evidência esperada: registro da VPC, CIDR e subnets associadas.
-
-## Validação de Subnets
-
-- Subnets públicas: `10.0.1.0/24` e `10.0.2.0/24`.
-- Subnets privadas de aplicação: `10.0.11.0/24` e `10.0.12.0/24`.
-- Subnets privadas de banco: `10.0.21.0/24` e `10.0.22.0/24`.
-- Subnets distribuídas em mais de uma zona de disponibilidade.
-
-Evidência esperada: mapa de subnets e zonas.
-
-## Validação de Rotas
-
-- Subnets públicas com rota para Internet Gateway.
-- Subnets privadas de aplicação com saída controlada via NAT Gateway, se necessário.
-- Subnets privadas de banco sem rota direta para Internet Gateway.
-
-Evidência esperada: route tables associadas às subnets corretas.
-
-## Validação do Internet Gateway
-
-- Internet Gateway associado à VPC.
-- Rota pública aplicada somente às subnets públicas.
-
-Evidência esperada: associação do IGW e route table pública.
-
-## Validação do NAT Gateway
-
-- NAT Gateway em subnet pública.
-- Subnet privada de aplicação com rota de saída para o NAT Gateway.
-- Registro de que, no MVP, um NAT Gateway pode ser usado por custo e simplicidade.
-
-Evidência esperada: rota privada e NAT Gateway ativo.
-
-## Validação dos Security Groups
-
-- `SG-ALB` recebe HTTPS `443`.
-- `SG-EC2-APP` recebe `80` ou `8080` somente do `SG-ALB`.
-- `SG-RDS` recebe `3306` somente do `SG-EC2-APP`.
-- SSH bloqueado ou restrito.
-- Porta `3306` não aberta para `0.0.0.0/0`.
-
-Evidência esperada: regras de entrada e saída por Security Group.
+O ambiente local continua disponível com `docker-compose.yml`, frontend em `localhost:8080`, backend em `localhost:8000` e MariaDB local publicado em `127.0.0.1:3307`. Na AWS, o banco não roda em container; o backend usa o endpoint privado do RDS.
 
 ## Validação do ALB
 
-- ALB posicionado nas subnets públicas.
-- Listener HTTPS planejado.
-- Target group apontando para EC2 privada.
-- Health check configurado para endpoint adequado.
+- Application Load Balancer em subnets públicas.
+- Listener HTTP `80`.
+- Target Group associado à EC2 privada.
+- Target Group em estado `healthy`.
+- Health check em `/`.
 
-Evidência esperada: target healthy e resposta HTTP esperada.
+Evidências esperadas:
 
-## Validação da EC2 Privada
+```bash
+curl http://<alb_dns_name>/
+```
 
-- EC2 em subnet privada de aplicação.
-- Sem IP público.
-- Sem entrada direta da internet.
-- Docker instalado e containers ativos.
-- IAM Role associada.
+Resultado esperado: HTML do frontend.
 
-Evidência esperada: detalhes da instância, rede, role e containers.
+## Validação do Frontend
+
+- Frontend servido por Nginx na EC2.
+- Swagger acessível por `/docs` no mesmo domínio do ALB.
+- O frontend consome o backend por caminhos relativos em `/api`, sem depender de `localhost`.
+
+Evidências esperadas:
+
+```bash
+curl -I http://<alb_dns_name>/
+curl -I http://<alb_dns_name>/docs
+```
+
+## Validação do Backend
+
+- Backend FastAPI executando em container Docker.
+- Backend acessível apenas pela rede Docker interna e pelo proxy Nginx.
+- Endpoint de saúde respondendo via ALB:
+
+```bash
+curl http://<alb_dns_name>/api/health
+```
+
+Resultado esperado:
+
+```json
+{"status":"ok","service":"mercantis-backend"}
+```
 
 ## Validação EC2 -> RDS
 
-- Backend conecta ao endpoint privado do RDS.
-- Porta usada: `3306`.
-- `/db-health` responde com sucesso.
-
-Evidência esperada: resposta do endpoint e logs do backend.
-
-## Validação do RDS
-
+- EC2 em subnet privada de aplicação.
 - RDS em subnets privadas de banco.
-- `Public accessibility` desativado.
-- Backup automático habilitado ou planejado.
-- DB Subnet Group com subnets em mais de uma zona.
+- RDS com `Public accessibility` desativado.
+- Security Group do RDS permitindo `3306` somente a partir do Security Group da EC2.
+- `/api/db-health` validando conexão real com MariaDB.
 
-Evidência esperada: configuração do RDS sem dados sensíveis.
+Evidência esperada:
 
-## Validação de CloudFront, WAF e ACM
+```bash
+curl http://<alb_dns_name>/api/db-health
+```
 
-Se implantados:
+Resultado esperado: resposta com `status: ok` e detalhe de conexão validada.
 
-- CloudFront distribuindo tráfego HTTPS.
-- WAF associado e com regras básicas.
-- Certificado ACM válido.
-- Shield Standard considerado na proteção de borda.
+## Validação dos Dados Iniciais
 
-Evidência esperada: distribuição, certificado e regras WAF.
+O `user_data` da EC2 executa `database/init.sql` e `database/seed.sql` contra o RDS. A lista de produtos deve retornar dados iniciais:
 
-## Validação de CORS
+```bash
+curl http://<alb_dns_name>/api/products
+```
 
-- CORS restrito ao domínio correto.
-- CORS aberto não utilizado em ambiente publicado.
+Resultado esperado: lista JSON com produtos de demonstração.
 
-Evidência esperada: headers de resposta da API.
+## Validação Operacional na EC2
 
-## Validação de CloudWatch
+O acesso administrativo à EC2 deve ser feito por AWS Systems Manager Session Manager.
 
-- Logs do backend, frontend, EC2, ALB, WAF e RDS planejados ou ativos.
-- Métricas de EC2 e RDS acompanhadas.
-- Alarmes básicos definidos ou documentados.
+Comandos úteis na sessão SSM:
 
-Evidência esperada: grupos de logs, métricas e alarmes.
+```bash
+sudo cloud-init status --long
+sudo tail -n 300 /var/log/cloud-init-output.log
+sudo tail -n 300 /var/log/mercantis-user-data.log
+sudo docker ps -a
+cd /opt/mercantis-move2cloud
+sudo docker compose -f docker-compose.aws.yml ps
+sudo docker compose -f docker-compose.aws.yml logs --tail=150
+```
 
-## Validação de Backup
+## Segurança e Segredos
 
-- Backup automático do RDS habilitado ou formalmente planejado.
-- Snapshot manual antes de mudanças críticas.
-- Plano de rollback documentado.
+- `dev.tfvars` é local e não deve ser versionado.
+- `.env` local não deve ser versionado.
+- Senhas reais não devem aparecer em README, documentação, commits ou arquivos de exemplo.
+- `db_password` é variável sensível no Terraform.
+- Se uma senha for exposta em logs ou conversas, a prática recomendada é rotacioná-la.
 
-Evidência esperada: política de backup e registro de snapshot, quando aplicável.
+## Evolução Futura
+
+Os itens abaixo não fazem parte da implantação atual:
+
+- CloudFront.
+- AWS WAF.
+- HTTPS com ACM.
+- Route 53 e domínio próprio.
+- Auto Scaling.
+- RDS Multi-AZ.
+
+Esses componentes permanecem como evolução futura e devem ser documentados separadamente quando forem implementados.

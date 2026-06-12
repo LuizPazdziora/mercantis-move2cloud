@@ -1,10 +1,10 @@
 # Observabilidade
 
-Este documento descreve a observabilidade recomendada para a arquitetura AWS de referência do Mercantis Move2Cloud.
+Este documento descreve a observabilidade recomendada para o ambiente AWS de desenvolvimento do Mercantis Move2Cloud.
 
 ## Papel do CloudWatch
 
-Amazon CloudWatch é o serviço recomendado para centralizar logs, métricas e alarmes da aplicação e dos componentes AWS. A observabilidade deve permitir diagnosticar falhas no fluxo `CloudFront/WAF -> ALB -> EC2 privada -> RDS`.
+Amazon CloudWatch é o serviço recomendado para centralizar logs, métricas e alarmes da aplicação e dos componentes AWS. A observabilidade deve permitir diagnosticar falhas no fluxo `ALB -> EC2 privada -> RDS`.
 
 ## Logs Recomendados
 
@@ -13,7 +13,7 @@ Amazon CloudWatch é o serviço recomendado para centralizar logs, métricas e a
 - Logs da EC2 e do Docker.
 - Logs do RDS MariaDB.
 - Logs do Application Load Balancer.
-- Logs do AWS WAF.
+- Logs do AWS WAF, quando a camada de borda futura for implementada.
 - Eventos relevantes de saúde dos containers.
 
 ## Métricas Recomendadas
@@ -31,7 +31,7 @@ Amazon CloudWatch é o serviço recomendado para centralizar logs, métricas e a
 | RDS | Conexões |
 | RDS | Storage livre |
 | RDS | Latência de leitura e escrita |
-| WAF | Requisições bloqueadas |
+| WAF futuro | Requisições bloqueadas |
 | Aplicação | Falhas em `/health` e `/db-health` |
 
 ## Alarmes Recomendados
@@ -45,7 +45,7 @@ Amazon CloudWatch é o serviço recomendado para centralizar logs, métricas e a
 - CPU alta no RDS.
 - Storage baixo no RDS.
 - Crescimento anormal de conexões no RDS.
-- Bloqueios recorrentes no WAF.
+- Bloqueios recorrentes no WAF, quando implementado.
 
 ## Evidências Esperadas
 

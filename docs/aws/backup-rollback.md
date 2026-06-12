@@ -1,6 +1,6 @@
 # Backup e Rollback
 
-Este documento descreve a estratégia de backup e rollback para a arquitetura AWS de referência do Mercantis Move2Cloud.
+Este documento descreve a estratégia de backup e rollback para o ambiente AWS de desenvolvimento do Mercantis Move2Cloud e sua evolução operacional.
 
 ## Backups do RDS
 
