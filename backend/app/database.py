@@ -23,12 +23,16 @@ def build_database_url() -> str | URL:
     )
 
 
+DATABASE_URL = build_database_url()
+IS_MYSQL = str(DATABASE_URL).startswith("mysql")
+
 # pool_pre_ping evita reutilizar conexões encerradas pelo MariaDB.
+# Os connect_args do PyMySQL só se aplicam ao MariaDB (os testes usam SQLite).
 engine = create_engine(
-    build_database_url(),
+    DATABASE_URL,
     pool_pre_ping=True,
     pool_recycle=300,
-    connect_args={"connect_timeout": 5, "charset": "utf8mb4"},
+    connect_args={"connect_timeout": 5, "charset": "utf8mb4"} if IS_MYSQL else {},
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

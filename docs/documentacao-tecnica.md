@@ -26,9 +26,11 @@ Na AWS, o frontend é servido por Nginx, o backend FastAPI é acessado pelo prox
 - Docker Compose com frontend, backend e database.
 - Docker Compose AWS com frontend e backend, sem container de banco.
 - Scripts iniciais de banco.
-- Endpoint `/health`.
+- Endpoints `/health` e `/db-health`.
+- CRUD de produtos (`/products`) e pedidos (`/orders`) com cálculo de total.
+- Testes automatizados do backend.
 - Infraestrutura Terraform para VPC, ALB, EC2 privada e RDS privado.
-- Documentação técnica inicial.
+- Documentação técnica.
 
 ## Limites
 

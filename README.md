@@ -1,4 +1,12 @@
-# Mercantis Move2Cloud
+# Mercantis Move2Cloud — migração de e-commerce para AWS com Terraform
+
+[![ci](https://github.com/LuizPazdziora/mercantis-move2cloud/actions/workflows/ci.yml/badge.svg)](https://github.com/LuizPazdziora/mercantis-move2cloud/actions/workflows/ci.yml)
+![AWS](https://img.shields.io/badge/AWS-ALB_·_EC2_·_RDS-FF9900?logo=amazonwebservices&logoColor=white)
+![Terraform](https://img.shields.io/badge/Terraform-7B42BC?logo=terraform&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?logo=docker&logoColor=white)
+
+![Arquitetura AWS do MVP](docs/images/diagrama-mvp.png)
 
 O Mercantis Move2Cloud é um MVP de aplicação web containerizada para validar uma base técnica de migração para AWS. O projeto usa a estratégia de replatform com refactor parcial: a aplicação é organizada em containers e o ambiente AWS de desenvolvimento utiliza Application Load Balancer público, EC2 privada com Docker Compose e Amazon RDS for MariaDB em subnets privadas.
 
@@ -71,8 +79,8 @@ database/
 docs/
 infra/
 docker-compose.yml
+docker-compose.aws.yml
 .env.example
-codex-instructions.md
 README.md
 ```
 
@@ -239,6 +247,9 @@ O `apply` cria recursos reais e pode gerar cobrança na AWS. Ele deve ser execut
 - [Plano de implantação AWS](docs/aws/plano-de-implantacao-aws.md)
 - [Checklist AWS](docs/aws/checklist-aws.md)
 - [Diagrama AWS de referência](docs/arquitetura/diagrama-aws-referencia.md)
+- [Diagrama do MVP](docs/arquitetura/diagrama-mvp.md) e [arquitetura final (to-be)](docs/arquitetura/diagrama-final.md)
+- [Roadmap](docs/roadmap.md)
+- [Documento completo em PDF](docs/Mercantis_Move2Cloud_Documentacao.pdf)
 - [Terraform](infra/terraform/README.md)
 
 ## Cuidados Operacionais
@@ -251,11 +262,20 @@ O `apply` cria recursos reais e pode gerar cobrança na AWS. Ele deve ser execut
 - Não usar dados reais de clientes.
 - Não adicionar autenticação, pagamento, logística, antifraude ou integrações externas nesta etapa.
 
-## Próximos Passos Planejados
+## Testes
 
-- Revisar e validar os diagramas finais.
-- Exportar diagramas em PNG/SVG.
-- Consolidar evidências de execução local.
-- Revisar documentação final.
-- Preparar apresentação técnica do MVP.
-- Consolidar evidências da implantação AWS funcional.
+```bash
+cd backend
+pip install -r requirements-dev.txt
+python -m pytest -q
+```
+
+Os testes da API usam SQLite em memória (sem precisar do MariaDB) e cobrem saúde, CRUD de produtos, cálculo de pedidos e regras de integridade. O GitHub Actions executa os testes e valida o Terraform a cada *push*.
+
+## Próximos Passos
+
+Ver o [roadmap](docs/roadmap.md): HTTPS com ACM/CloudFront/WAF, Secrets Manager, CloudWatch, alta disponibilidade e migração para ECS Fargate.
+
+## Autor
+
+**Luiz Fernando Pazdziora Costa** — Sistemas de Informação e Negócios (ESPM) · [GitHub](https://github.com/LuizPazdziora)
